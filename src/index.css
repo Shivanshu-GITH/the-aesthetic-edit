@@ -1,0 +1,69 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Lato:wght@300;400;700&family=Jost:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Dancing+Script:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-headline: "Playfair Display", serif;
+  --font-body: "Lato", sans-serif;
+  --font-label: "Jost", sans-serif;
+  --font-serif: "Cormorant Garamond", serif;
+  --font-signature: "Dancing Script", cursive;
+
+  --color-primary: #8b5e34;
+  --color-primary-hover: #a47148;
+  --color-on-primary: #ffffff;
+  
+  --color-accent-blush: #f3e8e6;
+  --color-accent-peach: #f6e4dc;
+  
+  --color-surface: #f5f1eb;
+  --color-surface-container: #efe6dc;
+  --color-surface-container-low: #f8f6f2;
+  --color-surface-container-high: #e8dfd6;
+  --color-surface-container-highest: #d9c7b8;
+  
+  --color-on-surface: #2c2c2c;
+  --color-on-surface-variant: #6b5e55;
+  --color-outline: #9a8f86;
+  --color-outline-variant: rgba(0,0,0,0.08);
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-on-surface font-body antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-headline;
+  }
+}
+
+.noise-overlay {
+  position: relative;
+}
+
+.noise-overlay::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+}
+
+.glass-nav {
+  @apply bg-[#FFFAF6]/80 backdrop-blur-xl;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-surface-container;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-primary rounded-full;
+}
