@@ -213,9 +213,16 @@ export function Footer() {
         </div>
       </div>
       
-      <div className="max-w-7xl mx-auto px-12 pt-12 flex flex-col md:flex-row justify-between items-center gap-6 text-[11px] font-label uppercase tracking-[0.3em] text-surface/40 text-center">
-        <p>© 2026 The Aesthetic Edit. All rights reserved.</p>
-        <p className="hover:text-surface/60 cursor-pointer transition-colors">Affiliate Disclosure</p>
+      <div className="max-w-7xl mx-auto px-12 pt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-[11px] font-label uppercase tracking-[0.3em] text-surface/40 items-center">
+        <div className="text-center md:text-left break-words">
+          <p>© 2026 THE AESTHETIC EDIT. ALL RIGHTS RESERVED.</p>
+        </div>
+        <div className="text-center">
+          <Link to="/admin" className="hover:text-surface/60 transition-colors">Admin</Link>
+        </div>
+        <div className="text-center md:text-right break-words">
+          <p className="hover:text-surface/60 cursor-pointer transition-colors">AFFILIATE DISCLOSURE</p>
+        </div>
       </div>
     </footer>
   );
