@@ -29,9 +29,7 @@ export default function Wishlist() {
       
       setIsLoading(true);
       try {
-        const response = await fetch('/api/wishlist', {
-          headers: { 'user-id': user.id }
-        });
+        const response = await fetch('/api/wishlist');
         const result = await response.json();
         if (result.success) {
           setProducts(result.data.products);
@@ -46,6 +44,23 @@ export default function Wishlist() {
 
     fetchWishlistItems();
   }, [user, wishlistCount]);
+
+  useEffect(() => {
+    const handleCacheCleared = () => {
+      if (user) {
+        fetch('/api/wishlist')
+          .then(res => res.json())
+          .then(result => {
+            if (result.success) {
+              setProducts(result.data.products);
+              setJournals(result.data.journals);
+            }
+          });
+      }
+    };
+    window.addEventListener('ae_cache_cleared', handleCacheCleared);
+    return () => window.removeEventListener('ae_cache_cleared', handleCacheCleared);
+  }, [user]);
 
   const handleClearAll = async () => {
     if (window.confirm(`Are you sure you want to clear your entire ${activeTab === 'products' ? 'product wishlist' : 'saved journals'}?`)) {
@@ -202,7 +217,7 @@ export default function Wishlist() {
               transition={{ delay: index * 0.1 }}
               className="group bg-white p-4 rounded-[32px] border border-outline-variant/30 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
             >
-              <Link to={`/blog/${journal.category_slug}/${journal.slug}`}>
+              <Link to={`/blog/${journal.categorySlug}/${journal.slug}`}>
                 <div className="aspect-[4/3] rounded-[24px] overflow-hidden mb-6 bg-surface-container">
                   <img 
                     src={journal.image} 

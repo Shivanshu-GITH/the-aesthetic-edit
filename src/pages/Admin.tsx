@@ -4,6 +4,8 @@ import { Mail, ExternalLink, MessageCircle, ArrowRight, Save, ShieldCheck, Shopp
 import { formatPrice } from '../lib/currency';
 import { Product } from '../types';
 import { useToast } from '../context/ToastContext';
+import { PRODUCT_CATEGORIES as CATEGORIES, SUB_CATEGORIES, VIBES } from '../lib/constants';
+import { clearFetchCache } from '../hooks/useFetch';
 
 interface AnalyticsData {
   totalLeads: number;
@@ -17,27 +19,6 @@ interface AnalyticsData {
 
 type TabType = 'analytics' | 'products' | 'blogs' | 'categories' | 'leads';
 
-const CATEGORIES = [
-  'Clothing & Accessories',
-  'Home & Decor',
-  'Lifestyle Essentials',
-  'Baby & Kids',
-  'Electronics & Gadgets'
-];
-
-const SUB_CATEGORIES: Record<string, string[]> = {
-  'Clothing & Accessories': ['Clothing', 'Accessories'],
-  'Home & Decor': ['Decor', 'Organization'],
-  'Lifestyle Essentials': ['Aesthetic Picks', 'Trending'],
-  'Baby & Kids': ['Clothing', 'Toys'],
-  'Electronics & Gadgets': ['Gadgets']
-};
-
-const VIBES = [
-  'Minimal', 'Cozy', 'Pinteresty', 'Aesthetic', 'Chic', 
-  'Cottagecore', 'Y2K', 'Dark Academia', 'Clean Girl', 'Soft Life'
-];
-
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -45,12 +26,33 @@ export default function Admin() {
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [productPrices, setProductPrices] = useState<Record<string, string>>({});
   
   const [activeTab, setActiveTab] = useState<TabType>('analytics');
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [allBlogPosts, setAllBlogPosts] = useState<any[]>([]);
   const [blogCategories, setBlogCategories] = useState<any[]>([]);
+  const [allLeads, setAllLeads] = useState<any[]>([]);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    const productsToFormat = [...(data?.topClickedProducts || []), ...allProducts];
+    if (productsToFormat.length > 0) {
+      const initialPrices: Record<string, string> = {};
+      productsToFormat.forEach(p => {
+        initialPrices[p.id] = formatPrice(p.price);
+      });
+      setProductPrices(prev => ({ ...prev, ...initialPrices }));
+
+      import('../lib/currency').then(({ formatPriceAsync }) => {
+        productsToFormat.forEach(p => {
+          formatPriceAsync(p.price).then(price => {
+            setProductPrices(prev => ({ ...prev, [p.id]: price }));
+          });
+        });
+      });
+    }
+  }, [data?.topClickedProducts, allProducts]);
 
   // Product Form State
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -144,36 +146,55 @@ export default function Admin() {
     }
   };
 
+  const refreshLeads = async () => {
+    const pwd = sessionStorage.getItem('ae_admin_auth');
+    if (!pwd) return;
+    try {
+      const res = await fetch('/api/leads/admin/all', { headers: { 'ADMIN_PASSWORD': pwd } });
+      if (res.ok) {
+        const data = await res.json();
+        setAllLeads(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to refresh leads', err);
+    }
+  };
+
   const fetchDashboard = async (pwd: string) => {
     setIsLoading(true);
     setError(''); // Clear previous error
     try {
       const headers = { 'ADMIN_PASSWORD': pwd };
-      const [analyticsRes, productsRes, blogPostsRes, blogCategoriesRes] = await Promise.all([
+      const [analyticsRes, productsRes, blogPostsRes, blogCategoriesRes, leadsRes] = await Promise.all([
         fetch('/api/analytics/summary', { headers }),
         fetch('/api/products/admin/all', { headers }),
         fetch('/api/blog/admin/posts', { headers }),
-        fetch('/api/blog/admin/categories', { headers })
+        fetch('/api/blog/admin/categories', { headers }),
+        fetch('/api/leads/admin/all', { headers })
       ]);
 
-      if (analyticsRes.ok && productsRes.ok && blogPostsRes.ok && blogCategoriesRes.ok) {
-        const [analyticsData, productsData, blogPostsData, blogCategoriesData] = await Promise.all([
+      if (analyticsRes.ok && productsRes.ok && blogPostsRes.ok && blogCategoriesRes.ok && leadsRes.ok) {
+        const [analyticsData, productsData, blogPostsData, blogCategoriesData, leadsData] = await Promise.all([
           analyticsRes.json(),
           productsRes.json(),
           blogPostsRes.json(),
-          blogCategoriesRes.json()
+          blogCategoriesRes.json(),
+          leadsRes.json()
         ]);
 
         setData(analyticsData.data);
         setAllProducts(productsData.data);
         setAllBlogPosts(blogPostsData.data);
         setBlogCategories(blogCategoriesData.data);
+        setAllLeads(leadsData.data);
         
         setIsAuthenticated(true);
         sessionStorage.setItem('ae_admin_auth', pwd);
       } else {
-        const errorData = await analyticsRes.json().catch(() => ({}));
-        setError(errorData.error || 'Unauthorized: Invalid password');
+        // Try to get error from any of the failed responses
+        const failedRes = [analyticsRes, productsRes, blogPostsRes, blogCategoriesRes, leadsRes].find(r => !r.ok);
+        const errorData = await failedRes?.json().catch(() => ({}));
+        setError(errorData?.error || 'Unauthorized: Invalid password');
         sessionStorage.removeItem('ae_admin_auth');
         setIsAuthenticated(false);
       }
@@ -207,6 +228,7 @@ export default function Admin() {
         body: JSON.stringify({ affiliateUrl: url })
       });
       showToast('Product URL updated', 'success');
+      clearFetchCache();
       refreshProducts();
     } catch (err) {
       showToast('Failed to update URL', 'error');
@@ -222,6 +244,7 @@ export default function Admin() {
         method: 'PATCH'
       });
       showToast('Visibility updated', 'success');
+      clearFetchCache();
       refreshProducts();
     } catch (err) {
       showToast('Failed to toggle status', 'error');
@@ -271,6 +294,7 @@ export default function Admin() {
         setIsProductModalOpen(false);
         setEditingProduct(null);
         showToast(`Product ${isEdit ? 'updated' : 'created'} successfully`, 'success');
+        clearFetchCache();
         refreshProducts();
       } else {
         const data = await res.json();
@@ -293,6 +317,7 @@ export default function Admin() {
         setIsProductModalOpen(false);
         setEditingProduct(null);
         showToast('Product deleted', 'success');
+        clearFetchCache();
         refreshProducts();
       } else {
         const data = await res.json();
@@ -314,13 +339,13 @@ export default function Admin() {
     if (!editingBlog.title) errors.title = 'Title is required';
     if (!editingBlog.slug) errors.slug = 'Slug is required';
     if (!editingBlog.category) errors.category = 'Category name is required';
-    if (!editingBlog.category_slug) errors.category_slug = 'Category slug is required';
+    if (!editingBlog.categorySlug) errors.categorySlug = 'Category slug is required';
     if (!editingBlog.excerpt) errors.excerpt = 'Excerpt is required';
     if (!editingBlog.content) errors.content = 'Content is required';
     if (!editingBlog.image) errors.image = 'Cover image URL is required';
     if (!editingBlog.author) errors.author = 'Author is required';
     if (!editingBlog.date) errors.date = 'Date is required';
-    if (!editingBlog.read_time) errors.read_time = 'Read time is required';
+    if (!editingBlog.readTime) errors.readTime = 'Read time is required';
 
     if (Object.keys(errors).length > 0) {
       setBlogFormErrors(errors);
@@ -334,24 +359,17 @@ export default function Admin() {
       const url = isEdit ? `/api/blog/admin/posts/${editingBlog.id}` : '/api/blog/admin/posts';
       const method = isEdit ? 'PUT' : 'POST';
 
-      const body = {
-        ...editingBlog,
-        categorySlug: editingBlog.category_slug,
-        readTime: editingBlog.read_time,
-        recommendedProducts: editingBlog.recommended_products || [],
-        isPublished: editingBlog.is_published === 1
-      };
-
       const res = await adminFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify(editingBlog)
       });
 
       if (res.ok) {
         setIsBlogModalOpen(false);
         setEditingBlog(null);
         showToast(`Blog post ${isEdit ? 'updated' : 'created'} successfully`, 'success');
+        clearFetchCache();
         refreshBlogPosts();
       } else {
         const data = await res.json();
@@ -374,6 +392,7 @@ export default function Admin() {
         setIsBlogModalOpen(false);
         setEditingBlog(null);
         showToast('Blog post deleted', 'success');
+        clearFetchCache();
         refreshBlogPosts();
       } else {
         const data = await res.json();
@@ -418,6 +437,7 @@ export default function Admin() {
         setIsCategoryModalOpen(false);
         setEditingCategory(null);
         showToast(`Category ${isEdit ? 'updated' : 'created'} successfully`, 'success');
+        clearFetchCache();
         refreshBlogCategories();
         refreshBlogPosts();
       } else {
@@ -441,6 +461,7 @@ export default function Admin() {
         setIsCategoryModalOpen(false);
         setEditingCategory(null);
         showToast('Category deleted', 'success');
+        clearFetchCache();
         refreshBlogCategories();
         refreshBlogPosts();
       } else {
@@ -451,6 +472,36 @@ export default function Admin() {
       showToast('Failed to delete category', 'error');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleToggleBlogPublished = async (id: string) => {
+    setUpdatingId(id);
+    try {
+      const post = allBlogPosts.find(p => p.id === id);
+      if (!post) return;
+
+      const newStatus = !post.isPublished;
+      
+      // We need to send the full post data to the update endpoint as there's no dedicated toggle endpoint for blogs
+      const body = {
+        ...post,
+        isPublished: newStatus
+      };
+
+      await adminFetch(`/api/blog/admin/posts/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      showToast('Publish status updated', 'success');
+      clearFetchCache();
+      refreshBlogPosts();
+    } catch (err) {
+      showToast('Failed to update status', 'error');
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -676,7 +727,7 @@ export default function Admin() {
                         <img src={p.image} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" alt="" />
                         <div className="min-w-0">
                           <p className="text-xs font-bold truncate">{p.title}</p>
-                          <p className="text-[10px] text-primary">{formatPrice(p.price)}</p>
+                          <p className="text-[10px] text-primary">{productPrices[p.id] || formatPrice(p.price)}</p>
                         </div>
                       </div>
                       <button 
@@ -740,7 +791,7 @@ export default function Admin() {
                           <td className="px-8 py-4">
                             <span className="text-sm font-bold block truncate max-w-[200px]">{p.title}</span>
                           </td>
-                          <td className="px-8 py-4 text-sm font-bold text-primary">{formatPrice(p.price)}</td>
+                          <td className="px-8 py-4 text-sm font-bold text-primary">{productPrices[p.id] || formatPrice(p.price)}</td>
                           <td className="px-8 py-4">
                             <span className="text-[10px] text-outline block">{p.category}</span>
                             <span className="text-[9px] text-primary/70 font-bold uppercase tracking-widest">{p.subCategory}</span>
@@ -808,10 +859,10 @@ export default function Admin() {
                 <button 
                   onClick={() => {
                     setEditingBlog({ 
-                      is_published: 1, 
-                      author: 'Anjali', 
+                      isPublished: true, 
+                      author: 'Elena Muse', 
                       date: new Date().toISOString().split('T')[0],
-                      recommended_products: []
+                      recommendedProducts: []
                     });
                     setBlogFormErrors({});
                     setIsSlugManual(false);
@@ -850,20 +901,19 @@ export default function Admin() {
                           <td className="px-8 py-4 text-sm text-on-surface-variant">{post.author}</td>
                           <td className="px-8 py-4 text-[10px] text-outline">{post.date}</td>
                           <td className="px-8 py-4">
-                            <span className={`text-[9px] uppercase tracking-widest font-bold px-2 py-1 rounded-full ${post.is_published ? 'bg-green-50 text-green-600' : 'bg-surface-container text-outline'}`}>
-                              {post.is_published ? 'Published' : 'Draft'}
-                            </span>
+                            <button 
+                              onClick={() => handleToggleBlogPublished(post.id)}
+                              disabled={updatingId === post.id}
+                              className={`p-2 rounded-lg transition-colors ${post.isPublished ? 'text-green-600 bg-green-50' : 'text-outline bg-surface-container'}`}
+                            >
+                              {post.isPublished ? <Check size={18} /> : <FileText size={18} />}
+                            </button>
                           </td>
                           <td className="px-8 py-4 text-right">
                             <div className="flex justify-end gap-2">
                               <button 
                                 onClick={() => {
-                                  // Parse recommended_products if it's a string
-                                  const products = typeof post.recommended_products === 'string' 
-                                    ? JSON.parse(post.recommended_products) 
-                                    : (post.recommended_products || []);
-                                  
-                                  setEditingBlog({ ...post, recommended_products: products });
+                                  setEditingBlog({ ...post });
                                   setBlogFormErrors({});
                                   setIsSlugManual(true);
                                   setIsBlogModalOpen(true);
@@ -986,7 +1036,16 @@ export default function Admin() {
 
           {activeTab === 'leads' && (
             <div className="space-y-8">
-              <h2 className="text-3xl font-headline font-bold">Waitlist Leads</h2>
+              <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-headline font-bold">Waitlist Leads</h2>
+                <button 
+                  onClick={refreshLeads}
+                  className="p-2 text-outline hover:text-primary transition-colors"
+                  title="Refresh Leads"
+                >
+                  <RefreshCw size={20} className={isLoading ? 'animate-spin' : ''} />
+                </button>
+              </div>
               <div className="bg-white rounded-[40px] border border-outline-variant/30 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
@@ -994,15 +1053,17 @@ export default function Admin() {
                       <tr className="bg-surface-container/30 text-[10px] uppercase tracking-widest text-outline font-bold">
                         <th className="px-8 py-4">Name</th>
                         <th className="px-8 py-4">Email</th>
+                        <th className="px-8 py-4">Source</th>
                         <th className="px-8 py-4">Status</th>
                         <th className="px-8 py-4">Date</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-outline-variant/10">
-                      {data.recentLeads.map((lead) => (
+                      {allLeads.map((lead) => (
                         <tr key={lead.id} className="group hover:bg-surface-container/10 transition-colors">
                           <td className="px-8 py-4 font-bold text-sm">{lead.name}</td>
                           <td className="px-8 py-4 text-sm text-on-surface-variant">{lead.email}</td>
+                          <td className="px-8 py-4 text-[10px] text-outline uppercase tracking-widest">{lead.source || 'Unknown'}</td>
                           <td className="px-8 py-4">
                             <span className={`text-[9px] uppercase tracking-widest font-bold px-2 py-1 rounded-full ${lead.is_confirmed ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600'}`}>
                               {lead.is_confirmed ? 'Confirmed' : 'Pending'}
@@ -1327,14 +1388,14 @@ export default function Admin() {
                   <div className="space-y-2">
                     <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Category Slug</label>
                     <select 
-                      value={editingBlog?.category_slug || ''}
-                      onChange={(e) => setEditingBlog(prev => ({ ...prev, category_slug: e.target.value }))}
+                      value={editingBlog?.categorySlug || ''}
+                      onChange={(e) => setEditingBlog(prev => ({ ...prev, categorySlug: e.target.value }))}
                       className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-sm appearance-none"
                     >
                       <option value="">Select Category Slug</option>
                       {blogCategories.map(c => <option key={c.id} value={c.slug}>{c.title}</option>)}
                     </select>
-                    {blogFormErrors.category_slug && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{blogFormErrors.category_slug}</p>}
+                    {blogFormErrors.categorySlug && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{blogFormErrors.categorySlug}</p>}
                   </div>
 
                   {/* Read Time */}
@@ -1342,12 +1403,12 @@ export default function Admin() {
                     <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Read Time</label>
                     <input 
                       type="text"
-                      value={editingBlog?.read_time || ''}
-                      onChange={(e) => setEditingBlog(prev => ({ ...prev, read_time: e.target.value }))}
+                      value={editingBlog?.readTime || ''}
+                      onChange={(e) => setEditingBlog(prev => ({ ...prev, readTime: e.target.value }))}
                       placeholder="e.g. 5 min read"
                       className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-sm"
                     />
-                    {blogFormErrors.read_time && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{blogFormErrors.read_time}</p>}
+                    {blogFormErrors.readTime && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{blogFormErrors.readTime}</p>}
                   </div>
 
                   {/* Author */}
@@ -1418,24 +1479,24 @@ export default function Admin() {
                     <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Recommended Products</label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto p-4 border border-outline-variant/20 rounded-2xl bg-surface-container/20">
                       {allProducts.filter(p => p.isActive).map(p => {
-                        const isSelected = editingBlog?.recommended_products?.includes(p.id);
+                        const isSelected = editingBlog?.recommendedProducts?.includes(p.id);
                         return (
                           <label key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-outline-variant/20 cursor-pointer hover:border-primary transition-all">
                             <input 
                               type="checkbox"
                               checked={isSelected}
                               onChange={(e) => {
-                                const current = editingBlog?.recommended_products || [];
+                                const current = editingBlog?.recommendedProducts || [];
                                 const next = e.target.checked 
                                   ? [...current, p.id] 
                                   : current.filter(id => id !== p.id);
-                                setEditingBlog(prev => ({ ...prev, recommended_products: next }));
+                                setEditingBlog(prev => ({ ...prev, recommendedProducts: next }));
                               }}
                               className="w-4 h-4 rounded border-outline-variant/30 text-primary focus:ring-primary"
                             />
                             <div className="min-w-0">
                               <p className="text-xs font-bold truncate">{p.title}</p>
-                              <p className="text-[9px] text-primary">{formatPrice(p.price)}</p>
+                              <p className="text-[9px] text-primary">{productPrices[p.id] || formatPrice(p.price)}</p>
                             </div>
                           </label>
                         );
@@ -1448,16 +1509,16 @@ export default function Admin() {
                     <label className="font-label text-xs uppercase tracking-widest font-bold text-outline mb-3">Publish Status</label>
                     <button
                       type="button"
-                      onClick={() => setEditingBlog(prev => ({ ...prev, is_published: prev?.is_published === 1 ? 0 : 1 }))}
+                      onClick={() => setEditingBlog(prev => ({ ...prev, isPublished: !prev?.isPublished }))}
                       className={`flex items-center gap-3 w-fit px-4 py-3 rounded-xl transition-all border ${
-                        editingBlog?.is_published === 1 
+                        editingBlog?.isPublished 
                           ? 'bg-green-50 border-green-200 text-green-600' 
                           : 'bg-surface-container border-outline-variant/30 text-outline'
                       }`}
                     >
-                      {editingBlog?.is_published === 1 ? <Check size={18} /> : <FileText size={18} />}
+                      {editingBlog?.isPublished ? <Check size={18} /> : <FileText size={18} />}
                       <span className="text-[9px] uppercase tracking-widest font-bold px-2 py-1 rounded-full">
-                        {editingBlog?.is_published === 1 ? 'Published' : 'Draft'}
+                        {editingBlog?.isPublished ? 'Published' : 'Draft'}
                       </span>
                     </button>
                   </div>
@@ -1479,7 +1540,7 @@ export default function Admin() {
                     disabled={isLoading}
                     className="bg-primary text-white px-6 py-3 rounded-2xl font-label text-xs uppercase tracking-widest font-bold hover:bg-primary-hover transition-all flex items-center justify-center gap-2 disabled:opacity-50 flex-1 sm:flex-none"
                   >
-                    {isLoading ? <RefreshCw size={16} className="animate-spin" /> : <><Save size={16} /> {editingBlog?.is_published === 1 ? 'Save & Publish' : 'Save as Draft'}</>}
+                    {isLoading ? <RefreshCw size={16} className="animate-spin" /> : <><Save size={16} /> {editingBlog?.isPublished ? 'Save & Publish' : 'Save as Draft'}</>}
                   </button>
                 </div>
               </div>

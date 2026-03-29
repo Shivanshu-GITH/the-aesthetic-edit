@@ -6,7 +6,6 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
   logout: () => void;
   error: string | null;
 }
@@ -19,18 +18,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const storedUser = localStorage.getItem('ae_user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-      setLoading(false);
-    };
+    const checkAuth = async () => { 
+      try { 
+        const res = await fetch('/api/auth/me'); 
+        const data = await res.json(); 
+        if (data.success && data.data?.user) { 
+          setUser(data.data.user); 
+        } 
+      } catch { 
+        // not logged in 
+      } finally { 
+        setLoading(false); 
+      } 
+    }; 
     checkAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
     setError(null);
+    if (!email || !email.includes('@')) throw new Error('Please enter a valid email address.'); 
+    if (!password || password.length < 6) throw new Error('Password must be at least 6 characters.'); 
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -40,7 +47,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res: ApiResponse<{ user: User }> = await response.json();
       if (res.success && res.data) {
         setUser(res.data.user);
-        localStorage.setItem('ae_user', JSON.stringify(res.data.user));
       } else {
         throw new Error(res.error || 'Login failed');
       }
@@ -52,6 +58,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (name: string, email: string, password: string) => {
     setError(null);
+    if (!name || name.trim().length < 2) throw new Error('Name must be at least 2 characters.'); 
+    if (!email || !email.includes('@')) throw new Error('Please enter a valid email address.'); 
+    if (!password || password.length < 8) throw new Error('Password must be at least 8 characters.'); 
     console.log('Attempting signup...', { name, email });
     try {
       const response = await fetch('/api/auth/signup', {
@@ -64,7 +73,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Signup result:', res);
       if (res.success && res.data) {
         setUser(res.data.user);
-        localStorage.setItem('ae_user', JSON.stringify(res.data.user));
       } else {
         throw new Error(res.error || 'Signup failed');
       }
@@ -75,43 +83,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithGoogle = async () => {
-    setError(null);
-    try {
-      // For demo, we simulate a successful Google auth
-      // In a real app, this would use window.google.accounts.id.prompt() or a redirect
-      const mockGoogleUser = {
-        name: 'Shivanshu Tiwari',
-        email: 'shivanshu.um@gmail.com',
-        id: 'google-123456789'
-      };
-
-      const response = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mockGoogleUser),
-      });
-
-      const res: ApiResponse<{ user: User }> = await response.json();
-      if (res.success && res.data) {
-        setUser(res.data.user);
-        localStorage.setItem('ae_user', JSON.stringify(res.data.user));
-      } else {
-        throw new Error(res.error || 'Google login failed');
-      }
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('ae_user');
+  const logout = async () => { 
+    await fetch('/api/auth/logout', { method: 'POST' }); 
+    setUser(null); 
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, loginWithGoogle, logout, error }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, error }}>
       {children}
     </AuthContext.Provider>
   );

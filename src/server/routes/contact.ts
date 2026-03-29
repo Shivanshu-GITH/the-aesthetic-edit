@@ -1,15 +1,29 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod'; 
+import { rateLimit } from 'express-rate-limit'; 
+
+const contactLimit = rateLimit({ 
+  windowMs: 60 * 60 * 1000, // 1 hour 
+  max: 5, 
+  message: { success: false, error: 'Too many messages, please try again later' }, 
+}); 
+
+const contactSchema = z.object({ 
+  name: z.string().min(2).max(100), 
+  email: z.string().email().max(200), 
+  message: z.string().min(10).max(2000), 
+}); 
 
 const router = Router();
 
-router.post('/', (req, res) => {
-  const { name, email, message } = req.body;
-
-  if (!name || !email || !message) {
-    return res.status(400).json({ success: false, error: 'All fields are required' });
-  }
+router.post('/', contactLimit, (req, res) => { 
+  const result = contactSchema.safeParse(req.body); 
+  if (!result.success) { 
+    return res.status(400).json({ success: false, error: 'Invalid input. Name (2+ chars), valid email, and message (10+ chars) required.' }); 
+  } 
+  const { name, email, message } = result.data; 
 
   try {
     const id = uuidv4();

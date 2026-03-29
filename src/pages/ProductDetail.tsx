@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ShoppingBag, ArrowLeft, ExternalLink, Star, ShieldCheck, Truck, Share2, Check } from 'lucide-react';
@@ -13,10 +13,20 @@ import { ProductDetailSkeleton } from '../components/Skeleton';
 
 export default function ProductDetail() {
   const { id } = useParams();
-  const [showAllRelated, setShowAllRelated] = React.useState(false);
-  const [isShared, setIsShared] = React.useState(false);
+  const [showAllRelated, setShowAllRelated] = useState(false);
+  const [isShared, setIsShared] = useState(false);
+  const [displayPrice, setDisplayPrice] = useState('');
   
   const { product, related, loading, error } = useProduct(id);
+
+  useEffect(() => { 
+    if (product) {
+      setDisplayPrice(formatPrice(product.price));
+      import('../lib/currency').then(({ formatPriceAsync }) => { 
+        formatPriceAsync(product.price).then(setDisplayPrice); 
+      }); 
+    }
+  }, [product]); 
 
   const handleAffiliateClick = async () => {
     if (!product) return;
@@ -163,7 +173,7 @@ export default function ProductDetail() {
                 </div>
                 <span className="text-xs font-label text-on-surface-variant uppercase tracking-widest font-bold">48 Reviews</span>
               </div>
-              <p className="text-3xl font-bold text-primary">{formatPrice(product.price)}</p>
+              <p className="text-3xl font-bold text-primary">{displayPrice}</p>
             </div>
 
             <div className="space-y-6">

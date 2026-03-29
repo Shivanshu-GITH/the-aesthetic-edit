@@ -7,30 +7,31 @@ import ProductCard from '../components/ProductCard';
 import SEOMeta from '../components/SEOMeta';
 import { useProducts } from '../hooks/useProducts';
 import { ProductCardGridSkeleton } from '../components/Skeleton';
+import { PRODUCT_CATEGORIES, VIBES } from '../lib/constants';
 
-const CATEGORIES = [
+const CATEGORIES_CONFIG = [
   { 
-    name: 'Clothing & Accessories', 
+    name: PRODUCT_CATEGORIES[0], 
     icon: Shirt,
     sub: ['Clothing', 'Accessories'],
   },
   { 
-    name: 'Home & Decor', 
+    name: PRODUCT_CATEGORIES[1], 
     icon: Home,
     sub: ['Decor', 'Organization']
   },
   { 
-    name: 'Lifestyle Essentials', 
+    name: PRODUCT_CATEGORIES[2], 
     icon: Sparkles,
     sub: ['Aesthetic Picks', 'Trending']
   },
   { 
-    name: 'Baby & Kids', 
+    name: PRODUCT_CATEGORIES[3], 
     icon: Baby,
     sub: ['Clothing', 'Toys'] 
   },
   { 
-    name: 'Electronics & Gadgets', 
+    name: PRODUCT_CATEGORIES[4], 
     icon: Laptop,
     sub: ['Gadgets'] 
   },
@@ -161,7 +162,7 @@ export default function Shop() {
           {/* Categories Card */}
           <div className="bg-white p-6 rounded-[32px] border border-outline-variant/50 shadow-sm space-y-6">
             <div className="flex items-center justify-between border-b border-outline-variant/30 pb-4">
-              <h3 className="font-headline font-bold text-lg text-on-surface">Find Your Vibe</h3>
+              <h3 className="font-headline font-bold text-lg text-on-surface">Categories</h3>
               <Filter size={16} className="text-outline" />
             </div>
             
@@ -176,7 +177,7 @@ export default function Shop() {
                 <span className="font-label text-[11px] uppercase tracking-widest font-bold">All Products</span>
               </button>
 
-              {CATEGORIES.map(cat => (
+              {CATEGORIES_CONFIG.map(cat => (
                 <div key={cat.name} className="space-y-1">
                   <div className="flex items-center gap-1">
                     <button 
@@ -220,6 +221,42 @@ export default function Shop() {
                     </motion.div>
                   )}
                 </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Vibes Card */}
+          <div className="bg-white p-6 rounded-[32px] border border-outline-variant/50 shadow-sm space-y-6">
+            <div className="flex items-center justify-between border-b border-outline-variant/30 pb-4">
+              <h3 className="font-headline font-bold text-lg text-on-surface">Find Your Vibe</h3>
+              <Sparkles size={16} className="text-outline" />
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              <button 
+                onClick={() => updateFilters({ vibe: 'All' })}
+                className={cn(
+                  "px-4 py-2 rounded-full font-label text-[10px] uppercase tracking-widest font-bold transition-all border",
+                  selectedVibe === 'All' 
+                    ? "bg-primary text-on-primary border-primary" 
+                    : "bg-surface text-outline border-outline-variant/30 hover:border-primary hover:text-primary"
+                )}
+              >
+                All
+              </button>
+              {VIBES.map(vibe => (
+                <button 
+                  key={vibe}
+                  onClick={() => updateFilters({ vibe })}
+                  className={cn(
+                    "px-4 py-2 rounded-full font-label text-[10px] uppercase tracking-widest font-bold transition-all border",
+                    selectedVibe === vibe 
+                      ? "bg-primary text-on-primary border-primary" 
+                      : "bg-surface text-outline border-outline-variant/30 hover:border-primary hover:text-primary"
+                  )}
+                >
+                  {vibe}
+                </button>
               ))}
             </div>
           </div>

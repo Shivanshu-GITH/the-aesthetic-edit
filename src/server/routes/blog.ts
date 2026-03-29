@@ -1,8 +1,18 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { v4 as uuidv4 } from 'uuid';
+import { rateLimit } from 'express-rate-limit'; 
+
+const adminLimit = rateLimit({ 
+  windowMs: 15 * 60 * 1000, // 15 minutes 
+  max: 1000, 
+  message: { success: false, error: 'Too many requests, please try again later' }, 
+  standardHeaders: true, 
+  legacyHeaders: false, 
+}); 
 
 const router = Router();
+router.use(adminLimit);
 
 const formatProduct = (p: any) => ({
   id: p.id,
@@ -18,6 +28,22 @@ const formatProduct = (p: any) => ({
   isActive: p.is_active === 1
 });
 
+const formatBlogPost = (b: any) => ({
+  id: b.id,
+  slug: b.slug,
+  categorySlug: b.category_slug,
+  title: b.title,
+  excerpt: b.excerpt,
+  content: b.content,
+  image: b.image,
+  category: b.category,
+  author: b.author,
+  date: b.date,
+  readTime: b.read_time,
+  recommendedProducts: Array.isArray(b.recommended_products) ? b.recommended_products : (typeof b.recommended_products === 'string' ? JSON.parse(b.recommended_products) : []),
+  isPublished: b.is_published === 1
+});
+
 // Simple in-memory cache for blog categories
 let categoriesCache: any = null;
 let cacheTimestamp = 0;
@@ -31,7 +57,7 @@ router.get('/admin/posts', (req, res) => {
   }
 
   const posts = db.prepare('SELECT * FROM blog_posts ORDER BY created_at DESC').all();
-  res.json({ success: true, data: posts });
+  res.json({ success: true, data: posts.map(formatBlogPost) });
 });
 
 router.post('/admin/posts', (req, res) => {
@@ -55,7 +81,7 @@ router.post('/admin/posts', (req, res) => {
   );
 
   const created = db.prepare('SELECT * FROM blog_posts WHERE id = ?').get(id);
-  res.status(201).json({ success: true, data: created });
+  res.status(201).json({ success: true, data: formatBlogPost(created) });
 });
 
 router.put('/admin/posts/:id', (req, res) => {
@@ -81,7 +107,7 @@ router.put('/admin/posts/:id', (req, res) => {
   );
 
   const updated = db.prepare('SELECT * FROM blog_posts WHERE id = ?').get(id);
-  res.json({ success: true, data: updated });
+  res.json({ success: true, data: formatBlogPost(updated) });
 });
 
 router.delete('/admin/posts/:id', (req, res) => {
@@ -218,7 +244,7 @@ router.get('/posts', (req, res) => {
 
   res.json({
     success: true,
-    data: posts,
+    data: posts.map(formatBlogPost),
     meta: {
       total,
       page: Number(page),
@@ -236,7 +262,14 @@ router.get('/posts/:slug', (req, res) => {
     return res.status(404).json({ success: false, error: 'Post not found' });
   }
 
-  const recommendedIds = JSON.parse(post.recommended_products || '[]');
+  let recommendedIds: string[] = []; 
+  try { 
+    recommendedIds = JSON.parse(post.recommended_products || '[]'); 
+    if (!Array.isArray(recommendedIds)) recommendedIds = []; 
+  } catch { 
+    recommendedIds = []; 
+  } 
+
   let recommendedProducts: any[] = [];
   if (recommendedIds.length > 0) {
     const placeholders = recommendedIds.map(() => '?').join(',');
@@ -244,7 +277,7 @@ router.get('/posts/:slug', (req, res) => {
   }
 
   const relatedPosts = db.prepare(`
-    SELECT id, slug, category_slug, title, excerpt, image, category, author, date, read_time 
+    SELECT *
     FROM blog_posts 
     WHERE category_slug = ? AND slug != ? AND is_published = 1 
     LIMIT 3
@@ -253,9 +286,9 @@ router.get('/posts/:slug', (req, res) => {
   res.json({
     success: true,
     data: {
-      post,
+      post: formatBlogPost(post),
       recommendedProducts: recommendedProducts.map(formatProduct),
-      relatedPosts
+      relatedPosts: relatedPosts.map(formatBlogPost)
     }
   });
 });

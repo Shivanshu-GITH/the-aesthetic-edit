@@ -66,10 +66,10 @@ export function Navbar() {
               <div className="flex items-center gap-4 border-l border-outline-variant/30 pl-6">
                 <div className="flex flex-col items-end">
                   <span className="text-[10px] font-label uppercase tracking-widest text-outline font-bold">
-                    {user.provider === 'google' ? 'Google ID,' : 'Hello,'}
+                    Hello,
                   </span>
                   <span className="text-xs font-bold text-on-surface">
-                    {user.provider === 'google' ? user.id : user.name.split(' ')[0]}
+                    {user.name.split(' ')[0]}
                   </span>
                 </div>
                 <button 

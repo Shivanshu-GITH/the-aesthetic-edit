@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Clock, Share2, Heart, ArrowRight, ShoppingBag, Check } from 'lucide-react';
@@ -15,13 +15,32 @@ export default function BlogPost() {
   const { category, slug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [showAllRecommended, setShowAllRecommended] = React.useState(false);
-  const [showAllRelated, setShowAllRelated] = React.useState(false);
-  const [isShared, setIsShared] = React.useState(false);
+  const [showAllRecommended, setShowAllRecommended] = useState(false);
+  const [showAllRelated, setShowAllRelated] = useState(false);
+  const [isShared, setIsShared] = useState(false);
+  const [productPrices, setProductPrices] = useState<Record<string, string>>({});
   
   const { post, recommendedProducts, relatedPosts, loading, error } = useBlogPost(slug);
   const { isJournalWishlisted, toggleJournalWishlist } = useWishlist();
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (recommendedProducts.length > 0) {
+      const initialPrices: Record<string, string> = {};
+      recommendedProducts.forEach(p => {
+        initialPrices[p.id] = formatPrice(p.price);
+      });
+      setProductPrices(initialPrices);
+
+      import('../lib/currency').then(({ formatPriceAsync }) => {
+        recommendedProducts.forEach(p => {
+          formatPriceAsync(p.price).then(price => {
+            setProductPrices(prev => ({ ...prev, [p.id]: price }));
+          });
+        });
+      });
+    }
+  }, [recommendedProducts]);
 
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -189,7 +208,7 @@ export default function BlogPost() {
                     </div>
                     <div className="space-y-2">
                       <h3 className="font-headline font-bold text-lg text-on-surface">{product.title}</h3>
-                      <p className="text-primary font-bold">{formatPrice(product.price)}</p>
+                      <p className="text-primary font-bold">{productPrices[product.id] || formatPrice(product.price)}</p>
                       <div className="flex gap-3">
                         <button 
                           onClick={() => handleAffiliateClick(product)}
@@ -239,7 +258,7 @@ export default function BlogPost() {
                           <Link to={`/shop/product/${p.id}`}>
                             <h3 className="font-headline font-bold text-sm text-on-surface hover:text-primary transition-colors line-clamp-2">{p.title}</h3>
                           </Link>
-                          <p className="text-primary font-bold text-sm">{formatPrice(p.price)}</p>
+                          <p className="text-primary font-bold text-sm">{productPrices[p.id] || formatPrice(p.price)}</p>
                         </div>
                       </div>
                       <div className="flex gap-2">

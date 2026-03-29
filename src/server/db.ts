@@ -13,6 +13,12 @@ db.pragma('foreign_keys = ON');
 
 export function initDb() {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS schema_migrations ( 
+      id INTEGER PRIMARY KEY AUTOINCREMENT, 
+      name TEXT NOT NULL UNIQUE, 
+      applied_at TEXT DEFAULT CURRENT_TIMESTAMP 
+    ); 
+
     CREATE TABLE IF NOT EXISTS products (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
@@ -63,15 +69,6 @@ export function initDb() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
-    CREATE TABLE IF NOT EXISTS wishlist_items (
-      id TEXT PRIMARY KEY,
-      session_id TEXT NOT NULL,
-      product_id TEXT NOT NULL,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(session_id, product_id),
-      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-    );
-
     CREATE TABLE IF NOT EXISTS affiliate_clicks (
       id TEXT PRIMARY KEY,
       product_id TEXT NOT NULL,
@@ -109,19 +106,16 @@ export function initDb() {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    -- Modify wishlist_items to support user_id
-    -- Note: session_id remains for guest tracking if needed, but user_id is preferred
-    CREATE TABLE IF NOT EXISTS wishlist_items_new (
-      id TEXT PRIMARY KEY,
-      user_id TEXT,
-      session_id TEXT,
-      product_id TEXT NOT NULL,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(user_id, product_id),
-      UNIQUE(session_id, product_id),
-      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
+    CREATE TABLE IF NOT EXISTS wishlist_items ( 
+      id TEXT PRIMARY KEY, 
+      user_id TEXT, 
+      session_id TEXT, 
+      product_id TEXT NOT NULL, 
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP, 
+      UNIQUE(user_id, product_id), 
+      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE, 
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE 
+    ); 
 
     CREATE TABLE IF NOT EXISTS contact_messages (
       id TEXT PRIMARY KEY,
@@ -132,17 +126,20 @@ export function initDb() {
     );
   `);
 
-  // Migrate wishlist_items if needed (simplified for this task)
-  try {
-    db.exec(`
-      INSERT INTO wishlist_items_new (id, session_id, product_id, created_at)
-      SELECT id, session_id, product_id, created_at FROM wishlist_items;
-      DROP TABLE wishlist_items;
-      ALTER TABLE wishlist_items_new RENAME TO wishlist_items;
-    `);
-  } catch (e) {
-    // Table might already be updated or migrated
-  }
+  // Create indexes for performance 
+  try { 
+    db.exec(` 
+      CREATE INDEX IF NOT EXISTS idx_wishlist_user ON wishlist_items(user_id); 
+      CREATE INDEX IF NOT EXISTS idx_wishlist_product ON wishlist_items(product_id); 
+      CREATE INDEX IF NOT EXISTS idx_affiliate_clicks_product ON affiliate_clicks(product_id); 
+      CREATE INDEX IF NOT EXISTS idx_blog_posts_category ON blog_posts(category_slug); 
+      CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(slug); 
+      CREATE INDEX IF NOT EXISTS idx_products_category ON products(category); 
+      CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active); 
+    `); 
+  } catch (e) { 
+    console.error('Index creation error:', e); 
+  } 
 }
 
 export default db;

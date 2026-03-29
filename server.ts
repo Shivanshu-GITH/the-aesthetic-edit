@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import cookieParser from 'cookie-parser';
 import { createServer as createViteServer } from 'vite';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -12,6 +13,8 @@ import wishlistRouter from './src/server/routes/wishlist.js';
 import analyticsRouter from './src/server/routes/analytics.js';
 import authRouter from './src/server/routes/auth.js';
 import contactRouter from './src/server/routes/contact.js';
+import currencyRouter from './src/server/routes/currency.js';
+import geoRouter from './src/server/routes/geo.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -24,11 +27,23 @@ async function startServer() {
   initDb();
 
   // 2. Middleware
-  app.use(helmet({
-    contentSecurityPolicy: false, // Disable CSP in dev to allow Vite to work
-  }));
+  app.use(helmet({ 
+    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? { 
+      directives: { 
+        defaultSrc: ["'self'"], 
+        scriptSrc: ["'self'", "'unsafe-inline'"], // needed for Vite chunks 
+        styleSrc: ["'self'", "'unsafe-inline'"], 
+        imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https://*.amazonaws.com"], 
+        connectSrc: ["'self'", "https://ipapi.co", "https://open.er-api.com"], 
+        fontSrc: ["'self'"], 
+        objectSrc: ["'none'"], 
+        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null, 
+      } 
+    } : false, 
+  })); 
   app.use(cors({ origin: process.env.APP_URL || '*' }));
   app.use(express.json({ limit: '10kb' }));
+  app.use(cookieParser());
   
   if (process.env.NODE_ENV !== 'production') {
     app.use(morgan('dev'));
@@ -42,6 +57,8 @@ async function startServer() {
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/contact', contactRouter);
+  app.use('/api/currency', currencyRouter);
+  app.use('/api/geo', geoRouter);
 
   // SEO Endpoints
   app.get('/robots.txt', (req, res) => {

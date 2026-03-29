@@ -83,3 +83,17 @@ export function useFetch<T>(
 
   return { data, loading, error, meta, refetch: () => fetchData(true) };
 }
+
+export function clearFetchCache() {
+  if (typeof window === 'undefined') return;
+  
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    if (key && key.startsWith('ae_cache_')) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => sessionStorage.removeItem(key));
+  window.dispatchEvent(new CustomEvent('ae_cache_cleared'));
+}

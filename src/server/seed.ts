@@ -9,7 +9,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?auto=format&fit=crop&q=80&w=800',
     category: 'Clothing & Accessories',
     sub_category: 'Clothing',
-    vibes: JSON.stringify(['Minimal Aesthetic', 'Clean Girl']),
+    vibes: JSON.stringify(['Minimal', 'Clean Girl']),
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'A timeless silhouette crafted from breathable organic linen, perfect for effortless summer days and intentional living. This dress combines comfort with a refined aesthetic that transitions seamlessly from morning coffee to evening strolls.'
@@ -33,7 +33,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1581783898377-1c85bf937427?auto=format&fit=crop&q=80&w=800',
     category: 'Home & Decor',
     sub_category: 'Decor',
-    vibes: JSON.stringify(['Cozy Home', 'Minimal Aesthetic']),
+    vibes: JSON.stringify(['Cozy', 'Minimal']),
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'This set of two hand-finished ceramic vases brings a sense of calm and organic texture to any corner of your home. Their soft matte finish and sculptural forms make them beautiful standalone pieces or the perfect vessel for dried botanicals.'
@@ -45,7 +45,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&q=80&w=800',
     category: 'Home & Decor',
     sub_category: 'Organization',
-    vibes: JSON.stringify(['Cozy Home', 'Pinteresty']),
+    vibes: JSON.stringify(['Cozy', 'Pinteresty']),
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Hand-woven from sustainable seagrass, this storage basket offers a beautiful solution for organizing your essentials while adding warmth to your space. It perfectly balances functionality with a rustic, aesthetic appeal.'
@@ -57,7 +57,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?auto=format&fit=crop&q=80&w=800',
     category: 'Electronics & Gadgets',
     sub_category: 'Gadgets',
-    vibes: JSON.stringify(['Minimal Aesthetic', 'Pinteresty']),
+    vibes: JSON.stringify(['Minimal', 'Pinteresty']),
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Transform your workspace with this cream-toned mechanical keyboard, featuring a satisfying tactile feel and a clean, minimalist design. It is the ultimate fusion of modern technology and vintage-inspired aesthetics for the productive dreamer.'
@@ -69,7 +69,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&q=80&w=800',
     category: 'Baby & Kids',
     sub_category: 'Clothing',
-    vibes: JSON.stringify(['Cozy Home']),
+    vibes: JSON.stringify(['Cozy']),
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Softness meets sustainability in this organic cotton onesie, designed with your little one\'s comfort and the planet in mind. Its neutral palette and gentle fabric make it an essential for a mindful nursery.'
@@ -81,7 +81,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&q=80&w=800',
     category: 'Home & Decor',
     sub_category: 'Decor',
-    vibes: JSON.stringify(['Minimal Aesthetic', 'Clean Girl']),
+    vibes: JSON.stringify(['Minimal', 'Clean Girl']),
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Indulge in a luxurious night\'s sleep with these pure mulberry silk pillowcases that protect your hair and skin while you dream. A simple yet impactful addition to your evening ritual for a touch of everyday elegance.'
@@ -93,7 +93,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?auto=format&fit=crop&q=80&w=800',
     category: 'Clothing & Accessories',
     sub_category: 'Clothing',
-    vibes: JSON.stringify(['Cozy Home', 'Minimal Aesthetic']),
+    vibes: JSON.stringify(['Cozy', 'Minimal']),
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Wrap yourself in the unparalleled softness of this ethically sourced cashmere sweater, designed for a relaxed yet polished fit. It is the quintessential piece for a timeless capsule wardrobe that prioritizes quality and comfort.'
@@ -105,7 +105,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&q=80&w=800',
     category: 'Baby & Kids',
     sub_category: 'Toys',
-    vibes: JSON.stringify(['Cozy Home', 'Pinteresty']),
+    vibes: JSON.stringify(['Cozy', 'Pinteresty']),
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Crafted from smooth, untreated beechwood, this minimalist teether provides safe relief for your baby while maintaining a beautiful, natural aesthetic. A thoughtful and durable choice for the intentional parent.'
@@ -117,7 +117,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&q=80&w=800',
     category: 'Electronics & Gadgets',
     sub_category: 'Gadgets',
-    vibes: JSON.stringify(['Minimal Aesthetic']),
+    vibes: JSON.stringify(['Minimal']),
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Illuminate your thoughts with this sleek matte black desk lamp, featuring an adjustable arm and a refined industrial silhouette. It provides the perfect focused light for your late-night creative sessions and aesthetic desk setups.'

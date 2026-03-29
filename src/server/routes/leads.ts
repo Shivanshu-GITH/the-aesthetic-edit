@@ -50,6 +50,16 @@ router.post('/', leadLimit, (req, res) => {
   });
 });
 
+router.get('/admin/all', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const leads = db.prepare('SELECT * FROM leads ORDER BY created_at DESC').all();
+  res.json({ success: true, data: leads });
+});
+
 router.get('/confirm/:token', (req, res) => {
   const { token } = req.params;
   const lead = db.prepare('SELECT 1 FROM leads WHERE confirmation_token = ?').get(token);

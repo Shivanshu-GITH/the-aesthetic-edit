@@ -31,9 +31,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     
     setIsLoading(true);
     try {
-      const response = await fetch('/api/wishlist', {
-        headers: { 'user-id': user.id }
-      });
+      const response = await fetch('/api/wishlist');
       const result = await response.json();
       if (result.success && result.data) {
         setWishlistIds((result.data.products || []).map((p: any) => p.id));
@@ -48,6 +46,12 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     fetchWishlist();
+  }, [fetchWishlist]);
+
+  useEffect(() => {
+    const handleCacheCleared = () => fetchWishlist();
+    window.addEventListener('ae_cache_cleared', handleCacheCleared);
+    return () => window.removeEventListener('ae_cache_cleared', handleCacheCleared);
   }, [fetchWishlist]);
 
   const isWishlisted = useCallback((productId: string) => {
@@ -72,8 +76,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       if (alreadyWishlisted) {
         const response = await fetch(`/api/wishlist/${productId}`, {
-          method: 'DELETE',
-          headers: { 'user-id': user.id }
+          method: 'DELETE'
         });
         const result = await response.json();
         if (!result.success) throw new Error(result.error);
@@ -82,8 +85,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const response = await fetch('/api/wishlist', {
           method: 'POST',
           headers: { 
-            'Content-Type': 'application/json',
-            'user-id': user.id
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ productId })
         });
@@ -115,8 +117,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       if (alreadyWishlisted) {
         const response = await fetch(`/api/wishlist/journal/${postId}`, {
-          method: 'DELETE',
-          headers: { 'user-id': user.id }
+          method: 'DELETE'
         });
         const result = await response.json();
         if (!result.success) throw new Error(result.error);
@@ -125,8 +126,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const response = await fetch('/api/wishlist/journal', {
           method: 'POST',
           headers: { 
-            'Content-Type': 'application/json',
-            'user-id': user.id
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ postId })
         });

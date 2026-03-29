@@ -1,7 +1,17 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { rateLimit } from 'express-rate-limit'; 
+
+const adminLimit = rateLimit({ 
+  windowMs: 15 * 60 * 1000, // 15 minutes 
+  max: 1000, 
+  message: { success: false, error: 'Too many requests, please try again later' }, 
+  standardHeaders: true, 
+  legacyHeaders: false, 
+}); 
 
 const router = Router();
+router.use(adminLimit);
 
 const formatProduct = (p: any) => ({
   id: p.id,

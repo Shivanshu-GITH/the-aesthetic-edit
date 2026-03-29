@@ -11,16 +11,18 @@ export function useProducts(filters?: {
   page?: number;
   limit?: number;
 }) {
-  const queryParams = useMemo(() => {
-    if (!filters) return '';
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined) {
-        params.append(key, value.toString());
-      }
-    });
-    return params.toString();
-  }, [filters]);
+  const queryParams = useMemo(() => { 
+    if (!filters) return ''; 
+    const params = new URLSearchParams(); 
+    // Sort keys for stable cache keys 
+    const sortedEntries = Object.entries(filters) 
+      .filter(([, value]) => value !== undefined) 
+      .sort(([a], [b]) => a.localeCompare(b)); 
+    sortedEntries.forEach(([key, value]) => { 
+      params.append(key, String(value)); 
+    }); 
+    return params.toString(); 
+  }, [filters]); 
 
   const url = queryParams ? `/api/products?${queryParams}` : '/api/products';
   const cacheKey = `products_${queryParams || 'all'}`;

@@ -3,7 +3,16 @@ import db from '../db.js';
 import { rateLimit } from 'express-rate-limit';
 import { v4 as uuidv4 } from 'uuid';
 
+const adminLimit = rateLimit({ 
+  windowMs: 15 * 60 * 1000, // 15 minutes 
+  max: 1000, 
+  message: { success: false, error: 'Too many requests, please try again later' }, 
+  standardHeaders: true, 
+  legacyHeaders: false, 
+}); 
+
 const router = Router();
+router.use(adminLimit);
 
 const formatProduct = (p: any) => ({
   id: p.id,
@@ -177,10 +186,15 @@ router.get('/', (req, res) => {
     query += ' AND sub_category = ?';
     params.push(subCategory);
   }
-  if (vibe) {
-    query += ' AND vibes LIKE ?';
-    params.push(`%${vibe}%`);
-  }
+  if (vibe) { 
+    query += ' AND (vibes LIKE ? OR vibes LIKE ? OR vibes LIKE ?)'; 
+    // Match: ["Minimal"], ["X","Minimal"], ["Minimal","X"] 
+    params.push( 
+      `["${vibe}"]`,           // only item 
+      `["${vibe}",%`,          // first item 
+      `%,"${vibe}"%`           // subsequent item 
+    ); 
+  } 
   if (maxPrice) {
     query += ' AND price <= ?';
     params.push(Number(maxPrice));

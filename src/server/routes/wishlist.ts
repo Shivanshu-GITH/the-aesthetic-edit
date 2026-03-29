@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { v4 as uuidv4 } from 'uuid';
+import { requireAuth, optionalAuth, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -10,14 +11,11 @@ router.use((req, res, next) => {
 });
 
 // Journal wishlist routes FIRST
-router.post('/journal', (req, res) => {
+router.post('/journal', requireAuth, (req: AuthenticatedRequest, res) => {
   console.log('POST /api/wishlist/journal', req.body);
-  const userId = req.headers['user-id'];
+  const userId = req.userId;
   const { postId } = req.body;
 
-  if (!userId || userId === 'undefined') {
-    return res.status(401).json({ success: false, error: 'Not authenticated' });
-  }
   if (!postId) {
     return res.status(400).json({ success: false, error: 'Post ID required' });
   }
@@ -43,14 +41,10 @@ router.post('/journal', (req, res) => {
   }
 });
 
-router.delete('/journal/:postId', (req, res) => {
+router.delete('/journal/:postId', requireAuth, (req: AuthenticatedRequest, res) => {
   console.log('DELETE /api/wishlist/journal/' + req.params.postId);
-  const userId = req.headers['user-id'];
+  const userId = req.userId;
   const { postId } = req.params;
-
-  if (!userId || userId === 'undefined') {
-    return res.status(401).json({ success: false, error: 'Not authenticated' });
-  }
 
   db.prepare('DELETE FROM wishlist_journals WHERE user_id = ? AND post_id = ?').run(userId, postId);
 
@@ -60,9 +54,9 @@ router.delete('/journal/:postId', (req, res) => {
   });
 });
 
-router.get('/', (req, res) => {
-  const userId = req.headers['user-id'];
-  if (!userId || userId === 'undefined') {
+router.get('/', optionalAuth, (req: AuthenticatedRequest, res) => {
+  const userId = req.userId;
+  if (!userId) {
     return res.status(200).json({ success: true, data: { products: [], journals: [] } });
   }
 
@@ -74,7 +68,8 @@ router.get('/', (req, res) => {
     `).all(userId);
 
     const journals = db.prepare(`
-      SELECT b.* FROM blog_posts b
+      SELECT b.id, b.slug, b.category_slug AS categorySlug, b.title, b.excerpt, b.image, b.category, b.author, b.date, b.read_time AS readTime 
+      FROM blog_posts b
       JOIN wishlist_journals w ON b.id = w.post_id
       WHERE w.user_id = ? AND b.is_published = 1
     `).all(userId);
@@ -92,13 +87,10 @@ router.get('/', (req, res) => {
   }
 });
 
-router.post('/', (req, res) => {
-  const userId = req.headers['user-id'];
+router.post('/', requireAuth, (req: AuthenticatedRequest, res) => {
+  const userId = req.userId;
   const { productId } = req.body;
 
-  if (!userId || userId === 'undefined') {
-    return res.status(401).json({ success: false, error: 'Not authenticated' });
-  }
   if (!productId) {
     return res.status(400).json({ success: false, error: 'Product ID required' });
   }
@@ -119,13 +111,9 @@ router.post('/', (req, res) => {
   });
 });
 
-router.delete('/:productId', (req, res) => {
-  const userId = req.headers['user-id'];
+router.delete('/:productId', requireAuth, (req: AuthenticatedRequest, res) => {
+  const userId = req.userId;
   const { productId } = req.params;
-
-  if (!userId || userId === 'undefined') {
-    return res.status(401).json({ success: false, error: 'Not authenticated' });
-  }
 
   db.prepare('DELETE FROM wishlist_items WHERE user_id = ? AND product_id = ?').run(userId, productId);
 
