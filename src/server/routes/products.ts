@@ -25,6 +25,143 @@ const affiliateClickLimit = rateLimit({
   message: { success: false, error: 'Too many clicks, please try again later' }
 });
 
+// Admin management routes
+router.get('/admin/all', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const products = db.prepare('SELECT * FROM products ORDER BY created_at DESC').all();
+  res.json({
+    success: true,
+    data: products.map(formatProduct)
+  });
+});
+
+router.post('/admin/create', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { title, price, image, category, subCategory, vibes, affiliateUrl, retailer, description, isActive = true } = req.body;
+  
+  if (!title || !price || !image || !category || !subCategory || !vibes || !affiliateUrl) {
+    return res.status(400).json({ success: false, error: 'Missing required fields' });
+  }
+
+  const id = uuidv4();
+  db.prepare(`
+    INSERT INTO products (id, title, price, image, category, sub_category, vibes, affiliate_url, retailer, description, is_active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id, 
+    title, 
+    price, 
+    image, 
+    category, 
+    subCategory, 
+    JSON.stringify(vibes), 
+    affiliateUrl, 
+    retailer || null, 
+    description || null, 
+    isActive ? 1 : 0
+  );
+
+  const created = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+  res.status(201).json({ success: true, data: formatProduct(created) });
+});
+
+router.put('/admin/:id', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { id } = req.params;
+  const { title, price, image, category, subCategory, vibes, affiliateUrl, retailer, description, isActive } = req.body;
+
+  const productExists = db.prepare('SELECT 1 FROM products WHERE id = ?').get(id);
+  if (!productExists) {
+    return res.status(404).json({ success: false, error: 'Product not found' });
+  }
+
+  db.prepare(`
+    UPDATE products 
+    SET title = ?, price = ?, image = ?, category = ?, sub_category = ?, vibes = ?, affiliate_url = ?, retailer = ?, description = ?, is_active = ?
+    WHERE id = ?
+  `).run(
+    title,
+    price,
+    image,
+    category,
+    subCategory,
+    JSON.stringify(vibes),
+    affiliateUrl,
+    retailer || null,
+    description || null,
+    isActive ? 1 : 0,
+    id
+  );
+
+  const updated = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+  res.json({ success: true, data: formatProduct(updated) });
+});
+
+router.delete('/admin/:id', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { id } = req.params;
+  const result = db.prepare('DELETE FROM products WHERE id = ?').run(id);
+
+  if (result.changes === 0) {
+    return res.status(404).json({ success: false, error: 'Product not found' });
+  }
+
+  res.json({ success: true });
+});
+
+// Existing Admin routes
+router.patch('/:id', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { id } = req.params;
+  const { affiliateUrl } = req.body;
+
+  if (affiliateUrl !== undefined) {
+    db.prepare('UPDATE products SET affiliate_url = ? WHERE id = ?').run(affiliateUrl, id);
+  }
+
+  const updated = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+  res.json({ success: true, data: updated });
+});
+
+router.patch('/:id/toggle-active', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { id } = req.params;
+  const product = db.prepare('SELECT is_active FROM products WHERE id = ?').get(id) as any;
+
+  if (!product) {
+    return res.status(404).json({ success: false, error: 'Product not found' });
+  }
+
+  const newStatus = product.is_active === 1 ? 0 : 1;
+  db.prepare('UPDATE products SET is_active = ? WHERE id = ?').run(newStatus, id);
+
+  res.json({ success: true, data: { isActive: newStatus === 1 } });
+});
+
 router.get('/', (req, res) => {
   const { category, subCategory, vibe, maxPrice, search, page = '1', limit = '12' } = req.query;
   const offset = (Number(page) - 1) * Number(limit);
@@ -133,43 +270,6 @@ router.post('/:id/pinterest-save', (req, res) => {
     success: true,
     data: { success: true }
   });
-});
-
-// Admin routes
-router.patch('/:id', (req, res) => {
-  const adminPassword = req.get('ADMIN_PASSWORD');
-  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
-
-  const { id } = req.params;
-  const { affiliateUrl } = req.body;
-
-  if (affiliateUrl !== undefined) {
-    db.prepare('UPDATE products SET affiliate_url = ? WHERE id = ?').run(affiliateUrl, id);
-  }
-
-  const updated = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
-  res.json({ success: true, data: updated });
-});
-
-router.patch('/:id/toggle-active', (req, res) => {
-  const adminPassword = req.get('ADMIN_PASSWORD');
-  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
-
-  const { id } = req.params;
-  const product = db.prepare('SELECT is_active FROM products WHERE id = ?').get(id) as any;
-
-  if (!product) {
-    return res.status(404).json({ success: false, error: 'Product not found' });
-  }
-
-  const newStatus = product.is_active === 1 ? 0 : 1;
-  db.prepare('UPDATE products SET is_active = ? WHERE id = ?').run(newStatus, id);
-
-  res.json({ success: true, data: { isActive: newStatus === 1 } });
 });
 
 export default router;

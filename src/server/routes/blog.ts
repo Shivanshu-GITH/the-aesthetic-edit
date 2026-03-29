@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
@@ -21,6 +22,165 @@ const formatProduct = (p: any) => ({
 let categoriesCache: any = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Admin Blog Post Routes
+router.get('/admin/posts', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const posts = db.prepare('SELECT * FROM blog_posts ORDER BY created_at DESC').all();
+  res.json({ success: true, data: posts });
+});
+
+router.post('/admin/posts', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { slug, categorySlug, title, excerpt, content, image, category, author, date, readTime, recommendedProducts = [], isPublished = true } = req.body;
+
+  if (!slug || !categorySlug || !title || !excerpt || !content || !image || !category || !author || !date || !readTime) {
+    return res.status(400).json({ success: false, error: 'Missing required fields' });
+  }
+
+  const id = uuidv4();
+  db.prepare(`
+    INSERT INTO blog_posts (id, slug, category_slug, title, excerpt, content, image, category, author, date, read_time, recommended_products, is_published)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id, slug, categorySlug, title, excerpt, content, image, category, author, date, readTime, JSON.stringify(recommendedProducts), isPublished ? 1 : 0
+  );
+
+  const created = db.prepare('SELECT * FROM blog_posts WHERE id = ?').get(id);
+  res.status(201).json({ success: true, data: created });
+});
+
+router.put('/admin/posts/:id', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { id } = req.params;
+  const { slug, categorySlug, title, excerpt, content, image, category, author, date, readTime, recommendedProducts = [], isPublished } = req.body;
+
+  const postExists = db.prepare('SELECT 1 FROM blog_posts WHERE id = ?').get(id);
+  if (!postExists) {
+    return res.status(404).json({ success: false, error: 'Post not found' });
+  }
+
+  db.prepare(`
+    UPDATE blog_posts 
+    SET slug = ?, category_slug = ?, title = ?, excerpt = ?, content = ?, image = ?, category = ?, author = ?, date = ?, read_time = ?, recommended_products = ?, is_published = ?
+    WHERE id = ?
+  `).run(
+    slug, categorySlug, title, excerpt, content, image, category, author, date, readTime, JSON.stringify(recommendedProducts), isPublished ? 1 : 0, id
+  );
+
+  const updated = db.prepare('SELECT * FROM blog_posts WHERE id = ?').get(id);
+  res.json({ success: true, data: updated });
+});
+
+router.delete('/admin/posts/:id', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { id } = req.params;
+  const result = db.prepare('DELETE FROM blog_posts WHERE id = ?').run(id);
+
+  if (result.changes === 0) {
+    return res.status(404).json({ success: false, error: 'Post not found' });
+  }
+
+  res.json({ success: true });
+});
+
+// Admin Blog Category Routes
+router.get('/admin/categories', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const categories = db.prepare('SELECT * FROM blog_categories').all();
+  res.json({ success: true, data: categories });
+});
+
+router.post('/admin/categories', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { title, slug, image, description } = req.body;
+
+  if (!title || !slug || !image || !description) {
+    return res.status(400).json({ success: false, error: 'Missing required fields' });
+  }
+
+  const id = uuidv4();
+  db.prepare(`
+    INSERT INTO blog_categories (id, title, slug, image, description)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(id, title, slug, image, description);
+
+  // Invalidate categories cache
+  categoriesCache = null;
+
+  const created = db.prepare('SELECT * FROM blog_categories WHERE id = ?').get(id);
+  res.status(201).json({ success: true, data: created });
+});
+
+router.put('/admin/categories/:id', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { id } = req.params;
+  const { title, slug, image, description } = req.body;
+
+  const categoryExists = db.prepare('SELECT 1 FROM blog_categories WHERE id = ?').get(id);
+  if (!categoryExists) {
+    return res.status(404).json({ success: false, error: 'Category not found' });
+  }
+
+  db.prepare(`
+    UPDATE blog_categories 
+    SET title = ?, slug = ?, image = ?, description = ?
+    WHERE id = ?
+  `).run(title, slug, image, description, id);
+
+  // Invalidate categories cache
+  categoriesCache = null;
+
+  const updated = db.prepare('SELECT * FROM blog_categories WHERE id = ?').get(id);
+  res.json({ success: true, data: updated });
+});
+
+router.delete('/admin/categories/:id', (req, res) => {
+  const adminPassword = req.get('ADMIN_PASSWORD');
+  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { id } = req.params;
+  const result = db.prepare('DELETE FROM blog_categories WHERE id = ?').run(id);
+
+  if (result.changes === 0) {
+    return res.status(404).json({ success: false, error: 'Category not found' });
+  }
+
+  // Invalidate categories cache
+  categoriesCache = null;
+
+  res.json({ success: true });
+});
 
 router.get('/categories', (req, res) => {
   const now = Date.now();
