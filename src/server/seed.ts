@@ -1,6 +1,6 @@
-import db, { initDb } from './db.js';
-import { v4 as uuidv4 } from 'uuid';
-
+import sql, { initDb } from './db.js'; 
+import { v4 as uuidv4 } from 'uuid'; 
+ 
 const products = [
   {
     id: 'p1',
@@ -9,7 +9,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?auto=format&fit=crop&q=80&w=800',
     category: 'Clothing & Accessories',
     sub_category: 'Clothing',
-    vibes: JSON.stringify(['Minimal', 'Clean Girl']),
+    vibes: ['Minimal', 'Clean Girl'],
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'A timeless silhouette crafted from breathable organic linen, perfect for effortless summer days and intentional living. This dress combines comfort with a refined aesthetic that transitions seamlessly from morning coffee to evening strolls.'
@@ -21,7 +21,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1573408301185-9146fe634ad0?auto=format&fit=crop&q=80&w=800',
     category: 'Clothing & Accessories',
     sub_category: 'Accessories',
-    vibes: JSON.stringify(['Clean Girl', 'Pinteresty']),
+    vibes: ['Clean Girl', 'Pinteresty'],
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Elevate your daily ensemble with this delicate gold link bracelet, designed to catch the light with every movement. Its minimalist design makes it a versatile staple for your curated jewelry collection.'
@@ -33,7 +33,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1581783898377-1c85bf937427?auto=format&fit=crop&q=80&w=800',
     category: 'Home & Decor',
     sub_category: 'Decor',
-    vibes: JSON.stringify(['Cozy', 'Minimal']),
+    vibes: ['Cozy', 'Minimal'],
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'This set of two hand-finished ceramic vases brings a sense of calm and organic texture to any corner of your home. Their soft matte finish and sculptural forms make them beautiful standalone pieces or the perfect vessel for dried botanicals.'
@@ -45,7 +45,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&q=80&w=800',
     category: 'Home & Decor',
     sub_category: 'Organization',
-    vibes: JSON.stringify(['Cozy', 'Pinteresty']),
+    vibes: ['Cozy', 'Pinteresty'],
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Hand-woven from sustainable seagrass, this storage basket offers a beautiful solution for organizing your essentials while adding warmth to your space. It perfectly balances functionality with a rustic, aesthetic appeal.'
@@ -57,7 +57,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?auto=format&fit=crop&q=80&w=800',
     category: 'Electronics & Gadgets',
     sub_category: 'Gadgets',
-    vibes: JSON.stringify(['Minimal', 'Pinteresty']),
+    vibes: ['Minimal', 'Pinteresty'],
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Transform your workspace with this cream-toned mechanical keyboard, featuring a satisfying tactile feel and a clean, minimalist design. It is the ultimate fusion of modern technology and vintage-inspired aesthetics for the productive dreamer.'
@@ -69,7 +69,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&q=80&w=800',
     category: 'Baby & Kids',
     sub_category: 'Clothing',
-    vibes: JSON.stringify(['Cozy']),
+    vibes: ['Cozy'],
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Softness meets sustainability in this organic cotton onesie, designed with your little one\'s comfort and the planet in mind. Its neutral palette and gentle fabric make it an essential for a mindful nursery.'
@@ -81,7 +81,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&q=80&w=800',
     category: 'Home & Decor',
     sub_category: 'Decor',
-    vibes: JSON.stringify(['Minimal', 'Clean Girl']),
+    vibes: ['Minimal', 'Clean Girl'],
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Indulge in a luxurious night\'s sleep with these pure mulberry silk pillowcases that protect your hair and skin while you dream. A simple yet impactful addition to your evening ritual for a touch of everyday elegance.'
@@ -93,7 +93,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?auto=format&fit=crop&q=80&w=800',
     category: 'Clothing & Accessories',
     sub_category: 'Clothing',
-    vibes: JSON.stringify(['Cozy', 'Minimal']),
+    vibes: ['Cozy', 'Minimal'],
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Wrap yourself in the unparalleled softness of this ethically sourced cashmere sweater, designed for a relaxed yet polished fit. It is the quintessential piece for a timeless capsule wardrobe that prioritizes quality and comfort.'
@@ -105,7 +105,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&q=80&w=800',
     category: 'Baby & Kids',
     sub_category: 'Toys',
-    vibes: JSON.stringify(['Cozy', 'Pinteresty']),
+    vibes: ['Cozy', 'Pinteresty'],
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Crafted from smooth, untreated beechwood, this minimalist teether provides safe relief for your baby while maintaining a beautiful, natural aesthetic. A thoughtful and durable choice for the intentional parent.'
@@ -117,7 +117,7 @@ const products = [
     image: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&q=80&w=800',
     category: 'Electronics & Gadgets',
     sub_category: 'Gadgets',
-    vibes: JSON.stringify(['Minimal']),
+    vibes: ['Minimal'],
     affiliate_url: '#',
     retailer: 'Amazon',
     description: 'Illuminate your thoughts with this sleek matte black desk lamp, featuring an adjustable arm and a refined industrial silhouette. It provides the perfect focused light for your late-night creative sessions and aesthetic desk setups.'
@@ -149,7 +149,7 @@ const blogPosts = [
     author: 'Elena Muse',
     date: 'Oct 12, 2024',
     read_time: '8 Min Read',
-    recommended_products: JSON.stringify(['p1', 'p2', 'p8']),
+    recommended_products: ['p1', 'p2', 'p8'],
   },
   {
     id: 'b2',
@@ -167,7 +167,7 @@ const blogPosts = [
     author: 'Elena Muse',
     date: 'Oct 15, 2024',
     read_time: '6 Min Read',
-    recommended_products: JSON.stringify(['p3', 'p4', 'p7']),
+    recommended_products: ['p3', 'p4', 'p7'],
   },
   {
     id: 'b3',
@@ -185,7 +185,7 @@ const blogPosts = [
     author: 'Elena Muse',
     date: 'Oct 20, 2024',
     read_time: '5 Min Read',
-    recommended_products: JSON.stringify(['p5', 'p10']),
+    recommended_products: ['p5', 'p10'],
   },
   {
     id: 'b4',
@@ -203,45 +203,58 @@ const blogPosts = [
     author: 'Elena Muse',
     date: 'Oct 22, 2024',
     read_time: '7 Min Read',
-    recommended_products: JSON.stringify(['p5', 'p10']),
+    recommended_products: ['p5', 'p10'],
   }
 ];
 
-function seed() {
-  initDb();
-
-  const productCount = (db.prepare('SELECT COUNT(*) as count FROM products').get() as { count: number }).count;
-
-  if (productCount > 0) {
-    console.log('Database already seeded. Skipping...');
-    return;
-  }
-
-  console.log('Seeding database...');
-
-  const insertProduct = db.prepare(`
-    INSERT INTO products (id, title, price, image, category, sub_category, vibes, affiliate_url, retailer, description)
-    VALUES (@id, @title, @price, @image, @category, @sub_category, @vibes, @affiliate_url, @retailer, @description)
-  `);
-
-  const insertBlogCategory = db.prepare(`
-    INSERT INTO blog_categories (id, title, slug, image, description)
-    VALUES (@id, @title, @slug, @image, @description)
-  `);
-
-  const insertBlogPost = db.prepare(`
-    INSERT INTO blog_posts (id, slug, category_slug, title, excerpt, content, image, category, author, date, read_time, recommended_products)
-    VALUES (@id, @slug, @category_slug, @title, @excerpt, @content, @image, @category, @author, @date, @read_time, @recommended_products)
-  `);
-
-  const transaction = db.transaction(() => {
-    for (const product of products) insertProduct.run(product);
-    for (const cat of blogCategories) insertBlogCategory.run(cat);
-    for (const post of blogPosts) insertBlogPost.run(post);
-  });
-
-  transaction();
-  console.log('Seeding completed successfully.');
-}
-
-seed();
+async function seed() { 
+  console.log('Initializing database...'); 
+  await initDb(); 
+ 
+  console.log('Seeding products...'); 
+  for (const product of products) { 
+    await sql` 
+      INSERT INTO products (id, title, price, image, category, sub_category, vibes, affiliate_url, retailer, description) 
+      VALUES ( 
+        ${product.id}, 
+        ${product.title}, 
+        ${product.price}, 
+        ${product.image}, 
+        ${product.category}, 
+        ${product.sub_category}, 
+        ${JSON.stringify(product.vibes)}::jsonb, 
+        ${product.affiliate_url}, 
+        ${product.retailer || null}, 
+        ${product.description || null} 
+      ) 
+      ON CONFLICT (id) DO NOTHING 
+    `; 
+  } 
+ 
+  console.log('Seeding blog categories...'); 
+  for (const cat of blogCategories) { 
+    await sql` 
+      INSERT INTO blog_categories (id, title, slug, image, description) 
+      VALUES (${cat.id}, ${cat.title}, ${cat.slug}, ${cat.image}, ${cat.description}) 
+      ON CONFLICT (id) DO NOTHING 
+    `; 
+  } 
+ 
+  console.log('Seeding blog posts...'); 
+  for (const post of blogPosts) { 
+    await sql` 
+      INSERT INTO blog_posts (id, slug, category_slug, title, excerpt, content, image, category, author, date, read_time, recommended_products, is_published) 
+      VALUES ( 
+        ${post.id}, ${post.slug}, ${post.category_slug}, ${post.title}, ${post.excerpt}, 
+        ${post.content}, ${post.image}, ${post.category}, ${post.author}, ${post.date}, 
+        ${post.read_time}, ${JSON.stringify(post.recommended_products || [])}::jsonb, true 
+      ) 
+      ON CONFLICT (id) DO NOTHING 
+    `; 
+  } 
+ 
+  console.log('Seeding complete!'); 
+  process.exit(0); 
+} 
+ 
+seed().catch((e) => { console.error(e); process.exit(1); }); 

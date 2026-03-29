@@ -1,81 +1,60 @@
-import { Router } from 'express';
-import db from '../db.js';
+import { Router } from 'express'; 
+import sql from '../db.js'; 
 import { rateLimit } from 'express-rate-limit'; 
 
 const adminLimit = rateLimit({ 
-  windowMs: 15 * 60 * 1000, // 15 minutes 
+  windowMs: 15 * 60 * 1000, 
   max: 1000, 
   message: { success: false, error: 'Too many requests, please try again later' }, 
   standardHeaders: true, 
   legacyHeaders: false, 
 }); 
 
-const router = Router();
-router.use(adminLimit);
+const router = Router(); 
+router.use(adminLimit); 
 
-const formatProduct = (p: any) => ({
-  id: p.id,
-  title: p.title,
-  price: p.price,
-  image: p.image,
-  category: p.category,
-  subCategory: p.sub_category,
-  vibe: Array.isArray(p.vibes) ? p.vibes : (typeof p.vibes === 'string' ? JSON.parse(p.vibes) : []),
-  affiliateUrl: p.affiliate_url,
-  retailer: p.retailer,
-  description: p.description,
-  isActive: p.is_active === 1
-});
+const formatProduct = (p: any) => ({ 
+  id: p.id, title: p.title, price: p.price, image: p.image, category: p.category, 
+  subCategory: p.sub_category, vibe: Array.isArray(p.vibes) ? p.vibes : [], 
+  affiliateUrl: p.affiliate_url, retailer: p.retailer, description: p.description, 
+  isActive: p.is_active === true || p.is_active === 1 
+}); 
 
-router.get('/summary', (req, res) => {
-  const adminPassword = req.get('ADMIN_PASSWORD');
-  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
+router.get('/summary', async (req, res) => { 
+  if (req.get('ADMIN_PASSWORD') !== process.env.ADMIN_PASSWORD) { 
+    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
+  } 
+  try { 
+    const [leadsRows, clicksRows, savesRows] = await Promise.all([ 
+      sql`SELECT COUNT(*) as count FROM leads`, 
+      sql`SELECT COUNT(*) as count FROM affiliate_clicks`, 
+      sql`SELECT COUNT(*) as count FROM pinterest_saves`, 
+    ]); 
+    const totalLeads = Number(leadsRows[0].count); 
+    const totalClicks = Number(clicksRows[0].count); 
+    const totalSaves = Number(savesRows[0].count); 
 
-  const totalLeads = (db.prepare('SELECT COUNT(*) as count FROM leads').get() as any).count;
-  const totalClicks = (db.prepare('SELECT COUNT(*) as count FROM affiliate_clicks').get() as any).count;
-  const totalSaves = (db.prepare('SELECT COUNT(*) as count FROM pinterest_saves').get() as any).count;
+    const [topClickedProducts, topPinterestSaved, allProducts, recentLeads] = await Promise.all([ 
+      sql`SELECT p.*, COUNT(c.id) as clicks FROM products p LEFT JOIN affiliate_clicks c ON p.id = c.product_id GROUP BY p.id ORDER BY clicks DESC LIMIT 10`, 
+      sql`SELECT p.*, COUNT(s.id) as saves FROM products p LEFT JOIN pinterest_saves s ON p.id = s.product_id GROUP BY p.id ORDER BY saves DESC LIMIT 10`, 
+      sql`SELECT * FROM products ORDER BY created_at DESC`, 
+      sql`SELECT id, name, email, source, is_confirmed, created_at FROM leads ORDER BY created_at DESC LIMIT 10`, 
+    ]); 
 
-  const topClickedProducts = db.prepare(`
-    SELECT p.*, COUNT(c.id) as clicks
-    FROM products p
-    LEFT JOIN affiliate_clicks c ON p.id = c.product_id
-    GROUP BY p.id
-    ORDER BY clicks DESC
-    LIMIT 10
-  `).all();
+    res.json({ 
+      success: true, 
+      data: { 
+        totalLeads, totalClicks, totalSaves, 
+        topClickedProducts: topClickedProducts.map((p: any) => ({ ...formatProduct(p), clicks: Number(p.clicks) })), 
+        topPinterestSaved: topPinterestSaved.map((p: any) => ({ ...formatProduct(p), saves: Number(p.saves) })), 
+        recentLeads, 
+        allProducts: allProducts.map(formatProduct) 
+      } 
+    }); 
+  } catch (e: any) { 
+    console.error(e); 
+    res.status(500).json({ success: false, error: 'Database error' }); 
+  } 
+}); 
 
-  const topPinterestSaved = db.prepare(`
-    SELECT p.*, COUNT(s.id) as saves
-    FROM products p
-    LEFT JOIN pinterest_saves s ON p.id = s.product_id
-    GROUP BY p.id
-    ORDER BY saves DESC
-    LIMIT 10
-  `).all();
-
-  const allProducts = db.prepare('SELECT * FROM products ORDER BY created_at DESC').all();
-
-  const recentLeads = db.prepare(`
-    SELECT id, name, email, source, is_confirmed, created_at
-    FROM leads
-    ORDER BY created_at DESC
-    LIMIT 10
-  `).all();
-
-  res.json({
-    success: true,
-    data: {
-      totalLeads,
-      totalClicks,
-      totalSaves,
-      topClickedProducts: topClickedProducts.map((p: any) => ({ ...formatProduct(p), clicks: p.clicks })),
-      topPinterestSaved: topPinterestSaved.map((p: any) => ({ ...formatProduct(p), saves: p.saves })),
-      recentLeads,
-      allProducts: allProducts.map(formatProduct)
-    }
-  });
-});
-
-export default router;
+export default router; 
