@@ -115,12 +115,6 @@ export default function Signup() {
           >
             {isLoading ? <Loader2 size={20} className="animate-spin" /> : 'Create Account'}
           </button>
-
-          <div className="text-center pt-4">
-            <p className="text-sm text-on-surface-variant">
-              Already have an account? <Link to="/login" className="text-primary font-bold hover:underline">Login</Link>
-            </p>
-          </div>
         </form>
 
         <div className="mt-10 text-center space-y-4">

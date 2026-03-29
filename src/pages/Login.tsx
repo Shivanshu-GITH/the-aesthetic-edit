@@ -99,12 +99,6 @@ export default function Login() {
           >
             {isLoading ? <Loader2 size={20} className="animate-spin" /> : 'Login'}
           </button>
-
-          <div className="text-center pt-4">
-            <p className="text-sm text-on-surface-variant">
-              Don't have an account? <Link to="/signup" className="text-primary font-bold hover:underline">Sign up</Link>
-            </p>
-          </div>
         </form>
 
         <div className="mt-10 text-center space-y-4">

@@ -24,7 +24,7 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3000; 
  
   // 1. Initialize DB 
-  await initDb(); 
+  // await initDb(); 
  
   // 2. Middleware 
   app.use(helmet({ 
