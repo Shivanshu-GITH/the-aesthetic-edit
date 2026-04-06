@@ -31,7 +31,10 @@ export function useFetch<T>(
     const CACHE_VERSION = 'v2'; // Bumped version to force refresh
     const versionedCacheKey = cacheKey ? `${CACHE_VERSION}_${cacheKey}` : null;
 
-    if (!isRefetch && versionedCacheKey) {
+    const NEVER_CACHE_PATTERNS = ['/api/auth/', '/api/wishlist']; 
+    const shouldCache = versionedCacheKey && !NEVER_CACHE_PATTERNS.some(p => url.includes(p)); 
+
+    if (!isRefetch && shouldCache) {
       const cached = sessionStorage.getItem(`ae_cache_${versionedCacheKey}`);
       if (cached) {
         const parsed: CacheItem<T> = JSON.parse(cached);
@@ -61,7 +64,7 @@ export function useFetch<T>(
       setMeta(result.meta || null);
       setError(null);
 
-      if (versionedCacheKey && result.data) {
+      if (shouldCache && result.data) {
         const cacheItem: CacheItem<T> = {
           data: result.data,
           meta: result.meta,

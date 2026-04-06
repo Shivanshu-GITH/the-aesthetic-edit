@@ -48,9 +48,44 @@ router.get('/admin/all', checkAdmin, async (req, res) => {
     const leads = await sql`SELECT * FROM leads ORDER BY created_at DESC`; 
     res.json({ success: true, data: leads }); 
   } catch (error: any) { 
-    res.status(500).json({ success: false, error: 'Database error' }); 
+    console.error('Fetch leads error:', error);
+    res.status(500).json({ success: false, error: 'Database error: ' + error.message }); 
   } 
 }); 
+
+router.patch('/admin/:id/status', checkAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { is_confirmed } = req.body;
+  
+  if (typeof is_confirmed === 'undefined') {
+    return res.status(400).json({ success: false, error: 'is_confirmed is required' });
+  }
+
+  try {
+    const result = await sql`UPDATE leads SET is_confirmed = ${is_confirmed === true || is_confirmed === 'true' || is_confirmed === 1} WHERE id = ${id} RETURNING *`;
+    if (result.length === 0) {
+      return res.status(404).json({ success: false, error: 'Lead not found' });
+    }
+    res.json({ success: true, data: result[0] });
+  } catch (error: any) {
+    console.error('Update lead status error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Database error' });
+  }
+});
+
+router.delete('/admin/:id', checkAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await sql`DELETE FROM leads WHERE id = ${id} RETURNING id`;
+    if (result.length === 0) {
+      return res.status(404).json({ success: false, error: 'Lead not found' });
+    }
+    res.json({ success: true, data: { message: 'Lead deleted successfully' } });
+  } catch (error: any) {
+    console.error('Delete lead error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Database error' });
+  }
+});
  
 router.get('/confirm/:token', async (req, res) => { 
   const { token } = req.params; 

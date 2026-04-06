@@ -37,34 +37,43 @@ export default function App() {
           <ToastProvider>
             <WishlistProvider>
               <ScrollToTop />
-              <div className="min-h-screen flex flex-col noise-overlay">
-                <Navbar />
-                <main className="flex-1">
-                  <Suspense fallback={<div className="min-h-screen bg-surface" />}>
-                    <Routes>
-                      <Route path="/" element={<Home />} />
-                      <Route path="/about" element={<About />} />
-                      <Route path="/blog" element={<BlogHub />} />
-                      <Route path="/blog/:category" element={<BlogCategory />} />
-                      <Route path="/blog/:category/:slug" element={<BlogPost />} />
-                      <Route path="/shop" element={<Shop />} />
-                      <Route path="/shop/product/:id" element={<ProductDetail />} />
-                      <Route path="/free-guide" element={<FreeGuide />} />
-                      <Route path="/wishlist" element={<Wishlist />} />
-                      <Route path="/admin" element={<Admin />} />
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/signup" element={<Signup />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </Suspense>
-                </main>
-                <Footer />
-              </div>
+              <AppContent />
               <ToastStack />
             </WishlistProvider>
           </ToastProvider>
         </AuthProvider>
       </Router>
     </ErrorBoundary>
+  );
+}
+
+function AppContent() {
+  const location = useLocation();
+  const isAdminPage = location.pathname.startsWith('/admin');
+
+  return (
+    <div className="min-h-screen flex flex-col noise-overlay">
+      {!isAdminPage && <Navbar />}
+      <main className="flex-1">
+        <Suspense fallback={<div className="min-h-screen bg-surface" />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/blog" element={<BlogHub />} />
+            <Route path="/blog/:category" element={<BlogCategory />} />
+            <Route path="/blog/:category/:slug" element={<BlogPost />} />
+            <Route path="/shop" element={<Shop />} />
+            <Route path="/shop/product/:id" element={<ProductDetail />} />
+            <Route path="/free-guide" element={<FreeGuide />} />
+            <Route path="/wishlist" element={<Wishlist />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </main>
+      {!isAdminPage && <Footer />}
+    </div>
   );
 }

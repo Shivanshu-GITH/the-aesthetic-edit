@@ -110,28 +110,30 @@ export default function About() {
         <div className="max-w-5xl mx-auto px-6 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-24 items-center">
             <div className="space-y-8 bg-white p-6 md:p-12 rounded-4xl border border-outline-variant/30 shadow-sm">
-              <h2 className="text-3xl md:text-4xl font-headline font-bold text-on-surface">My Story</h2>
-              <div className="space-y-6 text-sm md:text-base text-on-surface-variant leading-loose">
-                <p>
-                  My journey began with a simple love for creating beauty in the everyday.
-                </p>
-                <p>
-                  What started as experimenting with outfits and personal style slowly grew into something deeper — a passion for designing spaces that feel just as good as they look. Over time, I realized that style isn’t limited to what you wear. It’s in how you live, how your home feels, and how your space reflects who you are.
-                </p>
-                <p>
-                  I started this platform to bring those two worlds together — fashion and home — into one seamless, intentional lifestyle.
-                </p>
-                <p>
-                  Here, you’ll find curated ideas for styling your outfits, elevating your spaces, and creating a life that feels both refined and effortless. Whether it’s a cozy corner in your home or a look that makes you feel like your best self, my goal is to help you build a lifestyle that feels uniquely yours.
-                </p>
+              <h2 className="text-3xl md:text-4xl font-headline font-bold text-on-surface">
+                {siteConfigs.about_story_title || 'My Story'}
+              </h2>
+              <div className="space-y-6 text-sm md:text-base text-on-surface-variant leading-loose whitespace-pre-wrap">
+                {siteConfigs.about_story_content ? (
+                  siteConfigs.about_story_content.split('\n\n').map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))
+                ) : (
+                  <>
+                    <p>My journey began with a simple love for creating beauty in the everyday.</p>
+                    <p>What started as experimenting with outfits and personal style slowly grew into something deeper — a passion for designing spaces that feel just as good as they look. Over time, I realized that style isn’t limited to what you wear. It’s in how you live, how your home feels, and how your space reflects who you are.</p>
+                    <p>I started this platform to bring those two worlds together — fashion and home — into one seamless, intentional lifestyle.</p>
+                    <p>Here, you’ll find curated ideas for styling your outfits, elevating your spaces, and creating a life that feels both refined and effortless. Whether it’s a cozy corner in your home or a look that makes you feel like your best self, my goal is to help you build a lifestyle that feels uniquely yours.</p>
+                  </>
+                )}
                 <p className="font-serif italic text-xl md:text-2xl text-primary border-l-4 border-accent-peach pl-6 md:pl-8 py-2">
-                  "Style isn’t just what you wear — it’s how you live."
+                  "{siteConfigs.about_quote || "Style isn’t just what you wear — it’s how you live."}"
                 </p>
               </div>
             </div>
-              <div className="relative aspect-4/5 rounded-4xl overflow-hidden shadow-2xl border-8 md:border-12 border-white bg-surface-container">
+            <div className="relative aspect-4/5 rounded-4xl overflow-hidden shadow-2xl border-8 md:border-12 border-white bg-surface-container">
               <img 
-                src="https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&q=80&w=800" 
+                src={siteConfigs.about_story_image || "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&q=80&w=800"} 
                 alt="Aesthetic Lifestyle" 
                 loading="lazy"
                 className="w-full h-full object-cover"
@@ -146,9 +148,11 @@ export default function About() {
       <section className="max-w-7xl mx-auto px-6 pt-20 md:pt-32">
         <div className="bg-surface-container rounded-[40px] md:rounded-[48px] overflow-hidden grid grid-cols-1 lg:grid-cols-2 border border-outline-variant/30 shadow-sm">
           <div className="p-8 md:p-16 lg:p-24 space-y-8 bg-linear-to-br from-surface-container to-accent-blush/20">
-            <h2 className="text-3xl md:text-4xl font-headline font-bold text-on-surface">Let’s Work Together</h2>
+            <h2 className="text-3xl md:text-4xl font-headline font-bold text-on-surface">
+              {siteConfigs.about_collab_title || 'Let’s Work Together'}
+            </h2>
             <p className="text-sm md:text-base text-on-surface-variant leading-loose">
-              I love collaborating with brands that share a commitment to aesthetics and mindful consumption. Whether it's a content partnership or a creative direction project, let's create something timeless.
+              {siteConfigs.about_collab_description || "I love collaborating with brands that share a commitment to aesthetics and mindful consumption. Whether it's a content partnership or a creative direction project, let's create something timeless."}
             </p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
               <div className="flex -space-x-4">

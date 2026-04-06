@@ -21,7 +21,7 @@ router.get('/detect', geoLimit, async (req, res) => {
     }
 
     // Fallback: ip-api.com
-    const fbResponse = await fetch('http://ip-api.com/json/');
+    const fbResponse = await fetch('https://ip-api.com/json/');
     if (fbResponse.ok) {
       const fbData = await fbResponse.json();
       return res.json({ 

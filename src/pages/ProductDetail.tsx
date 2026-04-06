@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ShoppingBag, ArrowLeft, ExternalLink, Star, ShieldCheck, Truck, Share2, Check } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, ExternalLink, ShieldCheck, Truck, Share2, Check, Sparkles, RefreshCw } from 'lucide-react';
 import { formatPrice } from '../lib/currency';
 import PinterestSaveButton from '../components/PinterestSaveButton';
 import WishlistButton from '../components/WishlistButton';
@@ -28,6 +28,25 @@ export default function ProductDetail() {
       }); 
     }
   }, [product]); 
+
+  // Manual related products logic
+  const manualRelatedIds = product?.relatedProducts || [];
+  const [manualRelatedProducts, setManualRelatedProducts] = useState([]);
+
+  useEffect(() => {
+    if (manualRelatedIds.length > 0) {
+      const fetchManual = async () => {
+        try {
+          const promises = manualRelatedIds.map(id => fetch(`/api/products/${id}`).then(r => r.json()));
+          const results = await Promise.all(promises);
+          setManualRelatedProducts(results.filter(r => r.success).map(r => r.data));
+        } catch (e) {
+          console.error('Failed to fetch manual related products', e);
+        }
+      };
+      fetchManual();
+    }
+  }, [manualRelatedIds]);
 
   const handleAffiliateClick = async () => {
     if (!product) return;
@@ -87,13 +106,14 @@ export default function ProductDetail() {
     </div>
   );
 
+  const finalRelated = manualRelatedProducts.length > 0 ? manualRelatedProducts : (related || []);
   const relatedColumns = 4;
   const visibleRelated = showAllRelated 
-    ? related 
-    : (related.length > relatedColumns 
-        ? related.slice(0, Math.floor(related.length / relatedColumns) * relatedColumns)
-        : related);
-  const hasMoreRelated = !showAllRelated && related.length > visibleRelated.length;
+    ? finalRelated 
+    : (finalRelated.length > relatedColumns 
+        ? finalRelated.slice(0, Math.floor(finalRelated.length / relatedColumns) * relatedColumns)
+        : finalRelated);
+  const hasMoreRelated = !showAllRelated && finalRelated.length > visibleRelated.length;
 
   return (
     <div className="pb-32 bg-surface overflow-x-hidden">
@@ -109,29 +129,40 @@ export default function ProductDetail() {
           retailer: product.retailer
         }}
       />
-      <div className="max-w-7xl mx-auto px-6 pt-8 md:pt-12 relative">
-        <div className="absolute top-0 left-0 w-full h-64 md:h-96 bg-linear-to-b from-accent-blush/20 to-transparent pointer-events-none"></div>
-        <Link to="/shop" className="inline-flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-label text-[10px] uppercase tracking-widest font-bold mb-8 md:mb-12 relative z-10">
-          <ArrowLeft size={14} /> Back to Shop
+      
+      {/* Decorative background elements */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0 overflow-hidden">
+        <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] rounded-full bg-accent-blush/10 blur-[120px]"></div>
+        <div className="absolute bottom-[10%] left-[-5%] w-[30%] h-[30%] rounded-full bg-accent-peach/10 blur-[100px]"></div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 pt-8 md:pt-12 relative z-10">
+        <Link to="/shop" className="inline-flex items-center gap-2 text-on-surface-variant hover:text-primary transition-all font-label text-[10px] uppercase tracking-widest font-bold mb-8 md:mb-12 group">
+          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> Back to Shop
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-20 items-start">
           {/* Product Images */}
           <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
           >
-            <div className="rounded-[40px] md:rounded-[48px] overflow-hidden shadow-2xl bg-white border-8 md:border-12 border-white relative">
+            <div className="rounded-[48px] md:rounded-[64px] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] bg-white border-8 md:border-16 border-white relative group">
               <ImageCarousel 
                 images={product.images && product.images.length > 0 ? product.images : [product.image]} 
                 aspectRatio="aspect-[4/5]"
               />
+              <div className="absolute top-6 right-6 flex flex-col gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <WishlistButton variant="detail" productId={product.id} />
+                <PinterestSaveButton variant="detail" product={product} />
+              </div>
             </div>
-            {/* Vibe pills mobile */}
-            <div className="flex flex-wrap gap-2 justify-center lg:hidden">
+            
+            {/* Desktop Vibes */}
+            <div className="hidden lg:flex flex-wrap gap-3 justify-center">
               {Array.isArray(product.vibe) && product.vibe.map(v => (
-                <span key={v} className="px-3 py-1 rounded-full bg-accent-blush/60 text-[9px] font-label uppercase tracking-widest text-primary font-bold">
+                <span key={v} className="px-5 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-outline-variant/30 text-[10px] font-label uppercase tracking-widest text-primary font-bold shadow-sm">
                   {v}
                 </span>
               ))}
@@ -142,100 +173,143 @@ export default function ProductDetail() {
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="space-y-8 md:space-y-10"
+            transition={{ delay: 0.2 }}
+            className="space-y-10 md:pt-4"
           >
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="font-label text-[10px] md:text-xs uppercase tracking-[0.3em] text-primary font-bold">{product.category}</span>
-                <div className="flex gap-2 md:gap-3 items-center">
-                  <WishlistButton variant="detail" productId={product.id} />
-                  <PinterestSaveButton variant="detail" product={product} />
-                  <button 
-                    onClick={handleShare}
-                    className={cn(
-                      "w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center transition-all",
-                      isShared 
-                        ? "bg-accent-peach text-on-primary" 
-                        : "bg-surface-container text-on-surface-variant hover:text-primary hover:bg-accent-blush"
-                    )}
-                    aria-label="Share product"
-                  >
-                    {isShared ? <Check size={18} /> : <Share2 size={18} />}
-                  </button>
-                </div>
-              </div>
-              <h1 className="text-3xl md:text-5xl lg:text-6xl font-headline font-bold leading-tight text-on-surface">{product.title}</h1>
+            <div className="space-y-6">
               <div className="flex items-center gap-4">
-                <div className="flex text-accent-peach">
-                  {[1, 2, 3, 4, 5].map((i) => <Star key={i} size={14} fill="currentColor" />)}
-                </div>
-                <span className="text-[10px] font-label text-on-surface-variant uppercase tracking-widest font-bold">48 Reviews</span>
+                <div className="h-px w-8 bg-primary/30"></div>
+                <span className="font-label text-[10px] md:text-xs uppercase tracking-[0.4em] text-primary font-bold">{product.category}</span>
               </div>
-              <p className="text-2xl md:text-3xl font-bold text-primary">{displayPrice}</p>
+              
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-headline font-bold leading-[1.1] text-on-surface">
+                {product.title}
+              </h1>
+
+              <div className="flex items-center">
+                <p className="text-3xl md:text-4xl font-headline font-bold text-primary">{displayPrice}</p>
+              </div>
             </div>
 
-            <div className="space-y-6">
-              <p className="text-base md:text-lg text-on-surface-variant leading-loose">
-                This curated piece is designed for those who appreciate the finer details of intentional living. Crafted with quality materials and a timeless aesthetic, it seamlessly blends into any modern space or wardrobe.
-              </p>
+            <div className="space-y-8">
+              <div className="relative">
+                <div className="absolute -left-4 top-0 bottom-0 w-1 bg-accent-blush rounded-full"></div>
+                <p className="text-base md:text-xl text-on-surface-variant leading-relaxed font-serif italic pl-4">
+                  {product.description || "This curated piece is designed for those who appreciate the finer details of intentional living. Crafted with quality materials and a timeless aesthetic, it seamlessly blends into any modern space or wardrobe."}
+                </p>
+              </div>
               
-              <div className="hidden lg:flex flex-wrap gap-2">
+              {/* Mobile Vibes */}
+              <div className="flex flex-wrap gap-2 lg:hidden">
                 {Array.isArray(product.vibe) && product.vibe.map(v => (
-                  <span key={v} className="px-4 py-1.5 rounded-full bg-accent-blush/50 text-[10px] font-label uppercase tracking-widest text-primary font-bold">
+                  <span key={v} className="px-4 py-1.5 rounded-full bg-accent-blush/40 text-[9px] font-label uppercase tracking-widest text-primary font-bold">
                     {v}
                   </span>
                 ))}
               </div>
             </div>
 
-            <div className="space-y-4 pt-6">
-              <button 
-                onClick={handleAffiliateClick}
-                className="w-full bg-primary text-white py-4 md:py-5 rounded-2xl font-label font-bold uppercase tracking-widest hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 text-xs md:text-sm"
-              >
-                <ShoppingBag size={20} /> View on Retailer Site
-              </button>
-              <p className="text-[9px] md:text-[10px] text-center text-on-surface-variant uppercase tracking-widest font-bold">
+            <div className="space-y-6 pt-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button 
+                  onClick={handleAffiliateClick}
+                  className="flex-1 bg-primary text-white py-5 md:py-6 rounded-2xl font-label font-bold uppercase tracking-[0.2em] hover:bg-primary-hover transition-all shadow-[0_20px_40px_-12px_rgba(var(--color-primary-rgb),0.3)] flex items-center justify-center gap-3 text-xs md:text-sm group"
+                >
+                  <ShoppingBag size={20} className="group-hover:scale-110 transition-transform" /> View on Retailer Site
+                </button>
+                
+                <button 
+                  onClick={handleShare}
+                  className={cn(
+                    "px-6 py-5 md:py-6 rounded-2xl flex items-center justify-center transition-all border-2",
+                    isShared 
+                      ? "bg-accent-peach border-accent-peach text-white" 
+                      : "bg-white border-outline-variant/30 text-on-surface-variant hover:border-primary hover:text-primary shadow-sm"
+                  )}
+                  aria-label="Share product"
+                >
+                  {isShared ? <Check size={20} /> : <Share2 size={20} />}
+                </button>
+              </div>
+              <p className="text-[9px] md:text-[10px] text-center text-on-surface-variant uppercase tracking-[0.1em] font-bold opacity-60 italic">
                 * This is an affiliate link. I may earn a small commission at no extra cost to you.
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 md:gap-6 pt-10 border-t border-outline-variant/30">
-              <div className="flex flex-col items-center text-center space-y-2">
-                <Truck size={20} className="text-primary" />
-                <span className="text-[8px] md:text-[10px] font-label uppercase tracking-widest font-bold text-on-surface">Fast Shipping</span>
+            <div className="grid grid-cols-3 gap-4 md:gap-8 pt-12 border-t border-outline-variant/30">
+              <div className="flex flex-col items-center text-center space-y-3 group">
+                <div className="w-12 h-12 rounded-2xl bg-accent-blush/30 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500">
+                  <Truck size={22} />
+                </div>
+                <span className="text-[9px] md:text-[11px] font-label uppercase tracking-widest font-bold text-on-surface">Fast Shipping</span>
               </div>
-              <div className="flex flex-col items-center text-center space-y-2">
-                <ShieldCheck size={20} className="text-primary" />
-                <span className="text-[8px] md:text-[10px] font-label uppercase tracking-widest font-bold text-on-surface">Quality Assured</span>
+              <div className="flex flex-col items-center text-center space-y-3 group">
+                <div className="w-12 h-12 rounded-2xl bg-accent-blush/30 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500">
+                  <ShieldCheck size={22} />
+                </div>
+                <span className="text-[9px] md:text-[11px] font-label uppercase tracking-widest font-bold text-on-surface">Quality Assured</span>
               </div>
-              <div className="flex flex-col items-center text-center space-y-2">
-                <ExternalLink size={20} className="text-primary" />
-                <span className="text-[8px] md:text-[10px] font-label uppercase tracking-widest font-bold text-on-surface">Trusted Retailer</span>
+              <div className="flex flex-col items-center text-center space-y-3 group">
+                <div className="w-12 h-12 rounded-2xl bg-accent-blush/30 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500">
+                  <ExternalLink size={22} />
+                </div>
+                <span className="text-[9px] md:text-[11px] font-label uppercase tracking-widest font-bold text-on-surface">Trusted Retailer</span>
               </div>
             </div>
           </motion.div>
         </div>
 
-        {/* Related Products */}
-        <section className="mt-24 md:mt-40">
-          <div className="flex justify-between items-end mb-10 md:mb-12">
-            <h2 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">Complete the Look</h2>
-            <Link to="/shop" className="text-primary font-label text-[10px] md:text-xs uppercase tracking-widest border-b border-primary/20 pb-1 hover:border-primary transition-all font-bold">View All</Link>
+        {/* Related Products Section */}
+        <section className="mt-32 md:mt-56 relative">
+          {/* Section Header */}
+          <div className="max-w-2xl mb-16 md:mb-20 space-y-6">
+            <div className="flex items-center gap-3 text-primary">
+              <Sparkles size={20} fill="currentColor" />
+              <span className="font-label text-xs uppercase tracking-[0.4em] font-bold">Curated Picks</span>
+            </div>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+              <div className="space-y-4">
+                <h2 className="text-4xl md:text-6xl font-headline font-bold text-on-surface leading-tight">Complete the Look</h2>
+                <p className="text-base md:text-lg text-on-surface-variant font-serif italic">
+                  Hand-selected pieces that perfectly complement your current aesthetic. Curated for intentional styling.
+                </p>
+              </div>
+              <Link to="/shop" className="group flex items-center gap-3 text-primary font-label text-xs uppercase tracking-[0.2em] font-bold whitespace-nowrap">
+                <span className="border-b-2 border-primary/20 group-hover:border-primary transition-all pb-1">View All Collection</span>
+                <div className="w-8 h-8 rounded-full bg-accent-blush flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                  <ArrowLeft size={14} className="rotate-180" />
+                </div>
+              </Link>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+
+          {/* Related Products Grid - Asymmetric Editorial Feel */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-16 md:gap-y-24">
             {visibleRelated.map((p, index) => (
-              <ProductCard key={p.id} product={p} index={index} />
+              <motion.div 
+                key={p.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className={cn(
+                  "relative",
+                  index % 2 === 1 ? "md:translate-y-12" : ""
+                )}
+              >
+                <ProductCard product={p} index={index} />
+              </motion.div>
             ))}
           </div>
 
           {hasMoreRelated && (
-            <div className="text-center pt-12">
+            <div className="text-center pt-24 md:pt-40">
               <button 
                 onClick={() => setShowAllRelated(true)}
-                className="text-primary font-label text-xs uppercase tracking-widest font-bold border-b border-primary/20 pb-1 hover:border-primary transition-all"
+                className="group relative inline-flex items-center gap-4 px-10 py-5 rounded-2xl bg-white border-2 border-outline-variant/30 text-primary font-label text-xs uppercase tracking-[0.3em] font-bold hover:border-primary hover:shadow-2xl hover:shadow-primary/10 transition-all"
               >
-                See More Products
+                <span className="relative z-10">Discover More Pieces</span>
+                <RefreshCw size={16} className="group-hover:rotate-180 transition-transform duration-700" />
               </button>
             </div>
           )}

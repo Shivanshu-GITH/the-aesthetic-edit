@@ -11,12 +11,36 @@ export function Navbar() {
   const location = useLocation();
   const { wishlistCount } = useWishlist();
   const { user, logout } = useAuth();
+  const [siteConfigs, setSiteConfigs] = React.useState<Record<string, string>>({});
 
-  const navLinks = [
-    { name: 'Shop', path: '/shop' },
-    { name: 'Journal', path: '/blog' },
-    { name: 'About', path: '/about' },
-  ];
+  useEffect(() => {
+    fetch('/api/home-shop/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setSiteConfigs(data.data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const navLinks = React.useMemo(() => {
+    const fallback = [
+      { name: 'Shop', path: '/shop' },
+      { name: 'Journal', path: '/blog' },
+      { name: 'About', path: '/about' },
+    ];
+    const raw = siteConfigs.nav_links_json;
+    if (!raw) return fallback;
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return fallback;
+      const sanitized = parsed
+        .filter((l: any) => l && typeof l.name === 'string' && typeof l.path === 'string')
+        .map((l: any) => ({ name: l.name.slice(0, 40), path: l.path.startsWith('/') ? l.path : `/${l.path}` }));
+      return sanitized.length > 0 ? sanitized : fallback;
+    } catch {
+      return fallback;
+    }
+  }, [siteConfigs.nav_links_json]);
 
   return (
     <header className="bg-surface/90 backdrop-blur-md border-b border-outline-variant sticky top-0 z-50">
@@ -177,6 +201,69 @@ export function Footer() {
       .catch(err => console.error('Failed to fetch site config', err));
   }, []);
 
+  const quickLinks = React.useMemo(() => {
+    const fallback = [
+      { name: 'About Us', path: '/about' },
+      { name: 'Blog', path: '/blog' },
+      { name: 'Shop', path: '/shop' },
+      { name: 'Free Guide', path: '/free-guide' },
+    ];
+    const raw = siteConfigs.footer_quick_links_json;
+    if (!raw) return fallback;
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return fallback;
+      const sanitized = parsed
+        .filter((l: any) => l && typeof l.name === 'string' && typeof l.path === 'string')
+        .map((l: any) => ({ name: l.name.slice(0, 60), path: l.path.startsWith('/') ? l.path : `/${l.path}` }));
+      return sanitized.length > 0 ? sanitized : fallback;
+    } catch {
+      return fallback;
+    }
+  }, [siteConfigs.footer_quick_links_json]);
+
+  const blogCategoryLinks = React.useMemo(() => {
+    const fallback = [
+      { name: 'Outfit Ideas', path: '/blog/outfit-ideas' },
+      { name: 'Home Styling', path: '/blog/home-styling' },
+      { name: 'Lifestyle & Routines', path: '/blog/lifestyle-routines' },
+      { name: 'Productivity & Wellness', path: '/blog/productivity-wellness' },
+      { name: 'Tech & Setups', path: '/blog/tech-setups' },
+    ];
+    const raw = siteConfigs.footer_blog_category_links_json;
+    if (!raw) return fallback;
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return fallback;
+      const sanitized = parsed
+        .filter((l: any) => l && typeof l.name === 'string' && typeof l.path === 'string')
+        .map((l: any) => ({ name: l.name.slice(0, 60), path: l.path.startsWith('/') ? l.path : `/${l.path}` }));
+      return sanitized.length > 0 ? sanitized : fallback;
+    } catch {
+      return fallback;
+    }
+  }, [siteConfigs.footer_blog_category_links_json]);
+
+  const socialLinks = React.useMemo(() => {
+    const fallback = [
+      { name: 'Pinterest', url: '#' },
+      { name: 'Instagram', url: '#' },
+      { name: 'Contact Us', url: 'mailto:hello@thecuratededit.com' },
+    ];
+    const raw = siteConfigs.footer_social_links_json;
+    if (!raw) return fallback;
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return fallback;
+      const sanitized = parsed
+        .filter((l: any) => l && typeof l.name === 'string' && typeof l.url === 'string')
+        .map((l: any) => ({ name: l.name.slice(0, 40), url: l.url }));
+      return sanitized.length > 0 ? sanitized : fallback;
+    } catch {
+      return fallback;
+    }
+  }, [siteConfigs.footer_social_links_json]);
+
   return (
     <footer className="bg-linear-to-b from-[#3e2a1f] to-[#5a3b2a] text-surface pt-24 pb-12">
       <div className="max-w-7xl mx-auto px-6 border-b border-white/10 pb-20">
@@ -195,30 +282,27 @@ export function Footer() {
           <div className="space-y-8">
             <h4 className="font-headline text-xl text-white tracking-wide">Quick Links</h4>
             <ul className="space-y-5 font-label text-[11px] uppercase tracking-[0.2em] text-surface/60">
-              <li><Link to="/about" className="hover:text-white transition-all duration-300">About Us</Link></li>
-              <li><Link to="/blog" className="hover:text-white transition-all duration-300">Blog</Link></li>
-              <li><Link to="/shop" className="hover:text-white transition-all duration-300">Shop</Link></li>
-              <li><Link to="/free-guide" className="hover:text-white transition-all duration-300">Free Guide</Link></li>
+              {quickLinks.map((l) => (
+                <li key={l.path}><Link to={l.path} className="hover:text-white transition-all duration-300">{l.name}</Link></li>
+              ))}
             </ul>
           </div>
 
           <div className="space-y-8">
             <h4 className="font-headline text-xl text-white tracking-wide">Categories</h4>
             <ul className="space-y-5 font-label text-[11px] uppercase tracking-[0.2em] text-surface/60">
-              <li><Link to="/blog/outfit-ideas" className="hover:text-white transition-all duration-300">Outfit Ideas</Link></li>
-              <li><Link to="/blog/home-styling" className="hover:text-white transition-all duration-300">Home Styling</Link></li>
-              <li><Link to="/blog/lifestyle-routines" className="hover:text-white transition-all duration-300">Lifestyle & Routines</Link></li>
-              <li><Link to="/blog/productivity-wellness" className="hover:text-white transition-all duration-300">Productivity & Wellness</Link></li>
-              <li><Link to="/blog/tech-setups" className="hover:text-white transition-all duration-300">Tech & Setups</Link></li>
+              {blogCategoryLinks.map((l) => (
+                <li key={l.path}><Link to={l.path} className="hover:text-white transition-all duration-300">{l.name}</Link></li>
+              ))}
             </ul>
           </div>
 
           <div className="space-y-8">
             <h4 className="font-headline text-xl text-white tracking-wide">Connect</h4>
             <ul className="space-y-5 font-label text-[11px] uppercase tracking-[0.2em] text-surface/60">
-              <li><a href="#" className="hover:text-white transition-all duration-300">Pinterest</a></li>
-              <li><a href="#" className="hover:text-white transition-all duration-300">Instagram</a></li>
-              <li><a href="mailto:hello@thecuratededit.com" className="hover:text-white transition-all duration-300">Contact Us</a></li>
+              {socialLinks.map((l) => (
+                <li key={l.name}><a href={l.url} className="hover:text-white transition-all duration-300" rel={l.url.startsWith('http') ? 'noopener noreferrer' : undefined} target={l.url.startsWith('http') ? '_blank' : undefined}>{l.name}</a></li>
+              ))}
             </ul>
           </div>
         </div>

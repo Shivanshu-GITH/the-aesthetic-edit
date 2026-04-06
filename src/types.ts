@@ -11,6 +11,9 @@ export interface Product {
   retailer?: string;
   description?: string;
   isActive?: boolean;
+  isTrending?: boolean;
+  isTopRated?: boolean;
+  relatedProducts?: string[]; // IDs of products for "Complete the Look"
 }
 
 export interface BlogPost {
@@ -24,9 +27,12 @@ export interface BlogPost {
   images: string[];
   category: string;
   author: string;
+  authorImage?: string; // ADD THIS
   date: string;
   readTime: string;
   recommendedProducts: string[]; // IDs of products
+  relatedPosts: string[];
+  isPublished?: boolean;
 }
 
 export interface BlogCategory {
@@ -39,7 +45,7 @@ export interface BlogCategory {
 
 export interface WishlistItem {
   id: string;
-  sessionId: string;
+  userId: string;
   productId: string;
   createdAt: string;
 }

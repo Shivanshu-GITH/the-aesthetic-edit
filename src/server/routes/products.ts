@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { adminLimit, checkAdmin } from '../middleware/admin.js';
 import { z } from 'zod';
 import { rateLimit } from 'express-rate-limit';
+import { formatProduct } from '../utils/formatters.js';
 
 const router = Router(); 
 router.use(adminLimit); 
@@ -19,22 +20,18 @@ const productSchema = z.object({
   affiliateUrl: z.string().url(),
   retailer: z.string().max(100).optional().nullable(),
   description: z.string().max(5000).optional().nullable(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  isTrending: z.boolean().optional(),
+  isTopRated: z.boolean().optional(),
+  relatedProducts: z.array(z.string()).optional()
 });
 
-const formatProduct = (p: any) => ({ 
-  id: p.id, 
-  title: p.title, 
-  price: p.price, 
-  image: p.image, 
-  images: Array.isArray(p.images) ? p.images : [],
-  category: p.category, 
-  subCategory: p.sub_category, 
-  vibe: Array.isArray(p.vibes) ? p.vibes : [], 
-  affiliateUrl: p.affiliate_url, 
-  retailer: p.retailer, 
-  description: p.description, 
-  isActive: p.is_active === true || p.is_active === 1 
+const patchProductSchema = z.object({ 
+  affiliateUrl: z.string().url().optional(), 
+  isActive: z.boolean().optional(), 
+  isTrending: z.boolean().optional(),
+  isTopRated: z.boolean().optional(),
+  relatedProducts: z.array(z.string()).optional()
 }); 
 
 const affiliateClickLimit = rateLimit({ 
@@ -48,8 +45,8 @@ router.get('/admin/all', checkAdmin, async (req, res) => {
     const products = await sql`SELECT * FROM products ORDER BY created_at DESC`; 
     res.json({ success: true, data: products.map(formatProduct) }); 
   } catch (error: any) { 
-    console.error(error); 
-    res.status(500).json({ success: false, error: 'Database error' }); 
+    console.error('Fetch admin products error:', error); 
+    res.status(500).json({ success: false, error: 'Database error: ' + error.message }); 
   } 
 }); 
 
@@ -58,20 +55,27 @@ router.post('/admin/create', checkAdmin, async (req, res) => {
   if (!validation.success) {
     return res.status(400).json({ success: false, error: validation.error.issues[0].message });
   }
-  const { title, price, image, images = [], category, subCategory, vibes, affiliateUrl, retailer, description, isActive = true } = validation.data; 
+  
+  const { 
+    title, price, image, images = [], category, subCategory, vibes = [], 
+    affiliateUrl, retailer, description, isActive = true, 
+    isTrending = false, isTopRated = false, relatedProducts = []
+  } = validation.data; 
+
   try { 
-    const id = uuidv4(); 
     const vibesJson = JSON.stringify(vibes); 
-    const imagesJson = JSON.stringify(images.length > 0 ? images : [image]);
+    const imagesJson = JSON.stringify(Array.isArray(images) && images.length > 0 ? images : [image]);
+    const relatedProductsJson = JSON.stringify(relatedProducts || []);
+    const id = uuidv4(); 
     await sql` 
-      INSERT INTO products (id, title, price, image, images, category, sub_category, vibes, affiliate_url, retailer, description, is_active) 
-      VALUES (${id}, ${title}, ${price}, ${image}, ${imagesJson}::jsonb, ${category}, ${subCategory}, ${vibesJson}::jsonb, ${affiliateUrl}, ${retailer || null}, ${description || null}, ${isActive}) 
+      INSERT INTO products (id, title, price, image, images, category, sub_category, vibes, affiliate_url, retailer, description, is_active, is_trending, is_top_rated, related_products) 
+      VALUES (${id}, ${title}, ${price}, ${image}, ${imagesJson}::jsonb, ${category}, ${subCategory}, ${vibesJson}::jsonb, ${affiliateUrl}, ${retailer || null}, ${description || null}, ${isActive}, ${isTrending}, ${isTopRated}, ${relatedProductsJson}::jsonb) 
     `; 
     const rows = await sql`SELECT * FROM products WHERE id = ${id}`; 
     res.status(201).json({ success: true, data: formatProduct(rows[0]) }); 
   } catch (error: any) { 
-    console.error(error); 
-    res.status(500).json({ success: false, error: 'Failed to create product' }); 
+    console.error('Create product error:', error); 
+    res.status(500).json({ success: false, error: 'Failed to create product: ' + error.message }); 
   } 
 }); 
 
@@ -81,26 +85,28 @@ router.put('/admin/:id', checkAdmin, async (req, res) => {
   if (!validation.success) {
     return res.status(400).json({ success: false, error: validation.error.issues[0].message });
   }
-  const { title, price, image, images = [], category, subCategory, vibes, affiliateUrl, retailer, description, isActive } = validation.data; 
+  const { title, price, image, images = [], category, subCategory, vibes = [], affiliateUrl, retailer, description, isActive, isTrending, isTopRated, relatedProducts = [] } = validation.data; 
   try { 
     const existing = await sql`SELECT 1 FROM products WHERE id = ${id}`; 
     if (existing.length === 0) { 
       return res.status(404).json({ success: false, error: 'Product not found' }); 
     } 
-    const vibesJson = JSON.stringify(vibes); 
-    const imagesJson = JSON.stringify(images.length > 0 ? images : [image]);
+    const vibesJson = JSON.stringify(vibes || []); 
+    const imagesJson = JSON.stringify(Array.isArray(images) && images.length > 0 ? images : [image]);
+    const relatedProductsJson = JSON.stringify(relatedProducts || []);
     await sql` 
       UPDATE products 
       SET title = ${title}, price = ${price}, image = ${image}, images = ${imagesJson}::jsonb, category = ${category}, 
           sub_category = ${subCategory}, vibes = ${vibesJson}::jsonb, affiliate_url = ${affiliateUrl}, 
-          retailer = ${retailer || null}, description = ${description || null}, is_active = ${isActive} 
+          retailer = ${retailer || null}, description = ${description || null}, is_active = ${isActive}, 
+          is_trending = ${isTrending}, is_top_rated = ${isTopRated}, related_products = ${relatedProductsJson}::jsonb 
        WHERE id = ${id} 
     `; 
     const rows = await sql`SELECT * FROM products WHERE id = ${id}`; 
     res.json({ success: true, data: formatProduct(rows[0]) }); 
   } catch (error: any) { 
-    console.error(error); 
-    res.status(500).json({ success: false, error: 'Failed to update product' }); 
+    console.error('Update product error:', error); 
+    res.status(500).json({ success: false, error: 'Failed to update product: ' + error.message }); 
   } 
 }); 
 
@@ -117,13 +123,29 @@ router.delete('/admin/:id', checkAdmin, async (req, res) => {
 
 router.patch('/:id', checkAdmin, async (req, res) => { 
   const { id } = req.params; 
-  const { affiliateUrl } = req.body; 
+  const validation = patchProductSchema.safeParse(req.body); 
+  if (!validation.success) { 
+    return res.status(400).json({ success: false, error: validation.error.issues[0].message }); 
+  } 
+  const { affiliateUrl, isActive, isTrending, isTopRated } = validation.data; 
   try { 
     if (affiliateUrl !== undefined) { 
       await sql`UPDATE products SET affiliate_url = ${affiliateUrl} WHERE id = ${id}`; 
     } 
+    if (isActive !== undefined) { 
+      await sql`UPDATE products SET is_active = ${isActive} WHERE id = ${id}`; 
+    } 
+    if (isTrending !== undefined) { 
+      await sql`UPDATE products SET is_trending = ${isTrending} WHERE id = ${id}`; 
+    } 
+    if (isTopRated !== undefined) { 
+      await sql`UPDATE products SET is_top_rated = ${isTopRated} WHERE id = ${id}`; 
+    } 
     const rows = await sql`SELECT * FROM products WHERE id = ${id}`; 
-    res.json({ success: true, data: rows[0] }); 
+    if (rows.length === 0) { 
+      return res.status(404).json({ success: false, error: 'Product not found' }); 
+    } 
+    res.json({ success: true, data: formatProduct(rows[0]) }); 
   } catch (error: any) { 
     console.error(error); 
     res.status(500).json({ success: false, error: 'Database error' }); 
@@ -147,7 +169,7 @@ router.patch('/:id/toggle-active', checkAdmin, async (req, res) => {
 }); 
 
 router.get('/', async (req, res) => { 
-  const { category, subCategory, vibe, maxPrice, search, page = '1', limit = '12' } = req.query; 
+  const { category, subCategory, vibe, maxPrice, search, topRated, trending, page = '1', limit = '12' } = req.query; 
   const offset = (Number(page) - 1) * Number(limit); 
 
   try { 
@@ -156,6 +178,8 @@ router.get('/', async (req, res) => {
     const vibeFilter = vibe ? JSON.stringify([vibe]) : null;
     const maxPriceFilter = maxPrice ? Number(maxPrice) : null;
     const searchFilter = search ? `%${search}%` : null;
+    const topRatedFilter = topRated === 'true';
+    const trendingFilter = trending === 'true';
 
     const countRows = await sql`
       SELECT COUNT(*) as total FROM products 
@@ -165,18 +189,24 @@ router.get('/', async (req, res) => {
         AND (${vibeFilter}::jsonb IS NULL OR vibes::jsonb @> ${vibeFilter}::jsonb)
         AND (${maxPriceFilter}::real IS NULL OR price <= ${maxPriceFilter})
         AND (${searchFilter}::text IS NULL OR (title ILIKE ${searchFilter} OR description ILIKE ${searchFilter}))
+        AND (${trendingFilter}::boolean IS FALSE OR is_trending = true)
+        AND (${topRatedFilter}::boolean IS FALSE OR is_top_rated = true)
     `;
     const total = Number(countRows[0].total); 
 
     const products = await sql`
-      SELECT * FROM products 
-      WHERE is_active = true 
-        AND (${categoryFilter}::text IS NULL OR category = ${categoryFilter})
-        AND (${subCategoryFilter}::text IS NULL OR sub_category = ${subCategoryFilter})
-        AND (${vibeFilter}::jsonb IS NULL OR vibes::jsonb @> ${vibeFilter}::jsonb)
-        AND (${maxPriceFilter}::real IS NULL OR price <= ${maxPriceFilter})
-        AND (${searchFilter}::text IS NULL OR (title ILIKE ${searchFilter} OR description ILIKE ${searchFilter}))
-      ORDER BY created_at DESC 
+      SELECT p.* FROM products p
+      WHERE p.is_active = true 
+        AND (${categoryFilter}::text IS NULL OR p.category = ${categoryFilter})
+        AND (${subCategoryFilter}::text IS NULL OR p.sub_category = ${subCategoryFilter})
+        AND (${vibeFilter}::jsonb IS NULL OR p.vibes::jsonb @> ${vibeFilter}::jsonb)
+        AND (${maxPriceFilter}::real IS NULL OR p.price <= ${maxPriceFilter})
+        AND (${searchFilter}::text IS NULL OR (p.title ILIKE ${searchFilter} OR p.description ILIKE ${searchFilter}))
+        AND (${trendingFilter}::boolean IS FALSE OR p.is_trending = true)
+        AND (${topRatedFilter}::boolean IS FALSE OR p.is_top_rated = true)
+      ORDER BY 
+        CASE WHEN ${topRatedFilter} THEN (SELECT COUNT(*) FROM affiliate_clicks ac WHERE ac.product_id = p.id) ELSE 0 END DESC,
+        p.created_at DESC 
       LIMIT ${Number(limit)} OFFSET ${offset}
     `; 
 

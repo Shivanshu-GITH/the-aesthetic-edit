@@ -6,6 +6,7 @@ import { Product } from '../types';
 import { formatPrice, getUserCurrencySync } from '../lib/currency';
 import PinterestSaveButton from './PinterestSaveButton';
 import WishlistButton from './WishlistButton';
+import ImageCarousel from './ImageCarousel';
 
 interface ProductCardProps {
   product: Product;
@@ -49,12 +50,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, index = 0, showPinte
     >
       <div className="aspect-4/5 relative overflow-hidden bg-surface-container">
         <Link to={`/shop/product/${product.id}`}>
-          <img 
-            src={product.image} 
-            alt={product.title} 
-            loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-            referrerPolicy="no-referrer"
+          <ImageCarousel
+            images={Array.isArray(product.images) && product.images.length > 0 ? product.images : [product.image]}
+            aspectRatio="aspect-4/5"
+            className="rounded-none"
           />
         </Link>
         

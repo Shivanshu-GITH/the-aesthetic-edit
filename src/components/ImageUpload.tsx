@@ -27,15 +27,11 @@ export default function ImageUpload({ value, onChange, label }: ImageUploadProps
     const formData = new FormData();
     formData.append('image', file);
 
-    const adminPassword = sessionStorage.getItem('ae_admin_auth') || '';
-
     try {
       const response = await fetch('/api/upload', {
         method: 'POST',
-        headers: {
-          'ADMIN_PASSWORD': adminPassword,
-        },
         body: formData,
+        credentials: 'include',
       });
 
       const data = await response.json();

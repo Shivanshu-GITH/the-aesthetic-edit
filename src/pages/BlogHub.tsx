@@ -6,9 +6,11 @@ import { cn } from '../lib/utils';
 import SEOMeta from '../components/SEOMeta';
 import { useBlogCategories, useBlogPosts } from '../hooks/useBlog';
 import { BlogPostCardGridSkeleton, Skeleton } from '../components/Skeleton';
+import ImageCarousel from '../components/ImageCarousel';
 
 export default function BlogHub() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [siteConfigs, setSiteConfigs] = React.useState<Record<string, string>>({});
   const searchQuery = searchParams.get('search') || '';
   
   const updateSearch = (query: string) => {
@@ -27,6 +29,18 @@ export default function BlogHub() {
 
   const { categories, loading: catLoading } = useBlogCategories();
   const { posts, loading: postsLoading } = useBlogPosts(undefined, 1, 12);
+
+  React.useEffect(() => {
+    fetch('/api/home-shop/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setSiteConfigs(data.data);
+      });
+  }, []);
+
+  const defaultAuthorImage =
+    siteConfigs.blog_default_author_image ||
+    'https://i.pravatar.cc/150?u=author';
 
   const featuredPost = useMemo(() => posts[0] ?? null, [posts]);
 
@@ -77,10 +91,18 @@ export default function BlogHub() {
       <header className="max-w-4xl mx-auto px-6 pt-16 md:pt-24 text-center space-y-6 relative">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-linear-to-b from-accent-blush/20 to-transparent pointer-events-none"></div>
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-headline font-bold leading-tight text-on-surface relative z-10">
-          The <span className="italic font-normal text-primary">Journal</span>
+          {siteConfigs.journal_hero_title ? (
+            siteConfigs.journal_hero_title.split(' ').map((word, i, arr) => (
+              <React.Fragment key={i}>
+                {i === arr.length - 1 ? <span className="italic font-normal text-primary">{word}</span> : word + ' '}
+              </React.Fragment>
+            ))
+          ) : (
+            <>The <span className="italic font-normal text-primary">Journal</span></>
+          )}
         </h1>
         <p className="font-serif italic text-lg md:text-xl text-on-surface-variant max-w-2xl mx-auto relative z-10">
-          Ideas, inspiration, and curated guides to help you style your life with intention.
+          {siteConfigs.journal_hero_subtitle || 'Ideas, inspiration, and curated guides to help you style your life with intention.'}
         </p>
       </header>
 
@@ -201,12 +223,10 @@ export default function BlogHub() {
                 className="group space-y-6 bg-white p-4 rounded-4xl border border-outline-variant/30 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
               >
                 <Link to={`/blog/${post.categorySlug}/${post.slug}`} className="block relative aspect-4/5 rounded-3xl overflow-hidden shadow-sm bg-surface-container">
-                  <img 
-                    src={post.image} 
-                    alt={post.title} 
-                    loading="lazy"
-                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                    referrerPolicy="no-referrer"
+                  <ImageCarousel
+                    images={Array.isArray(post.images) && post.images.length > 0 ? post.images : [post.image]}
+                    aspectRatio="aspect-4/5"
+                    className="rounded-none"
                   />
                   <div className="absolute top-4 md:top-6 left-4 md:left-6">
                     <span className="bg-accent-blush/90 backdrop-blur-sm px-3 md:px-4 py-1 md:py-1.5 rounded-full font-label text-[8px] md:text-[9px] uppercase tracking-widest font-bold text-primary">
@@ -215,10 +235,22 @@ export default function BlogHub() {
                   </div>
                 </Link>
                 <div className="space-y-4 px-2">
-                  <div className="flex items-center gap-3 md:gap-4 text-[9px] md:text-[10px] font-label uppercase tracking-widest text-outline">
-                    <span>{post.date}</span>
-                    <span className="w-1 h-1 rounded-full bg-outline/30"></span>
-                    <span>{post.readTime}</span>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 md:gap-4 text-[9px] md:text-[10px] font-label uppercase tracking-widest text-outline">
+                      <span>{post.date}</span>
+                      <span className="w-1 h-1 rounded-full bg-outline/30"></span>
+                      <span>{post.readTime}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full overflow-hidden bg-surface-container border border-outline-variant/30">
+                        <img
+                          src={post.authorImage || defaultAuthorImage}
+                          alt={post.author}
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    </div>
                   </div>
                   <h3 className="text-xl md:text-2xl font-headline font-bold leading-tight text-on-surface group-hover:text-primary transition-colors line-clamp-2">
                     <Link to={`/blog/${post.categorySlug}/${post.slug}`}>{post.title}</Link>

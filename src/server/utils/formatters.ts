@@ -1,0 +1,36 @@
+export const formatProduct = (p: any) => ({ 
+  id: p.id, 
+  title: p.title, 
+  price: p.price, 
+  image: p.image, 
+  images: Array.isArray(p.images) ? p.images : [], 
+  category: p.category, 
+  subCategory: p.sub_category, 
+  vibe: Array.isArray(p.vibes) ? p.vibes : [], 
+  affiliateUrl: p.affiliate_url, 
+  retailer: p.retailer, 
+  description: p.description, 
+  isActive: p.is_active === true || p.is_active === 1, 
+  isTrending: p.is_trending === true || p.is_trending === 1, 
+  isTopRated: p.is_top_rated === true || p.is_top_rated === 1, 
+  relatedProducts: Array.isArray(p.related_products) ? p.related_products : [],
+}); 
+
+export const formatBlogPost = (b: any) => ({ 
+  id: b.id, 
+  slug: b.slug, 
+  categorySlug: b.category_slug, 
+  title: b.title, 
+  excerpt: b.excerpt, 
+  content: b.content, 
+  image: b.image, 
+  images: Array.isArray(b.images) ? b.images : [],
+  category: b.category, 
+  author: b.author, 
+  authorImage: b.author_image,
+  date: b.date, 
+  readTime: b.read_time, 
+  recommendedProducts: Array.isArray(b.recommended_products) ? b.recommended_products : [], 
+  relatedPosts: Array.isArray(b.related_posts) ? b.related_posts : [],
+  isPublished: b.is_published === true || b.is_published === 1 
+}); 

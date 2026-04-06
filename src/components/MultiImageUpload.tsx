@@ -19,7 +19,6 @@ export default function MultiImageUpload({ value, onChange, label }: MultiImageU
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const adminPassword = sessionStorage.getItem('ae_admin_auth') || '';
     setIsUploading(true);
 
     try {
@@ -31,11 +30,14 @@ export default function MultiImageUpload({ value, onChange, label }: MultiImageU
         formData.append('image', file);
         const response = await fetch('/api/upload', {
           method: 'POST',
-          headers: { 'ADMIN_PASSWORD': adminPassword },
           body: formData,
+          credentials: 'include',
         });
         const data = await response.json();
-        if (!data.success) throw new Error(data.error || 'Upload failed');
+        if (!data.success) {
+          console.error(`Upload error for ${file.name}:`, data.error);
+          throw new Error(data.error || 'Upload failed');
+        }
         return data.url;
       });
 
@@ -43,8 +45,8 @@ export default function MultiImageUpload({ value, onChange, label }: MultiImageU
       onChange([...value, ...urls]);
       showToast(`${urls.length} image(s) uploaded successfully`, 'success');
     } catch (error: any) {
-      console.error('Upload error:', error);
-      showToast(error.message || 'Upload failed', 'error');
+      console.error('Final upload error:', error);
+      showToast(error.message || 'One or more uploads failed', 'error');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -180,6 +182,11 @@ export default function MultiImageUpload({ value, onChange, label }: MultiImageU
             <span className="text-[9px] uppercase tracking-widest font-bold text-outline group-hover:text-primary">
               {isUploading ? 'Uploading...' : 'Add Images'}
             </span>
+            {!isUploading && (
+              <span className="text-[7px] uppercase tracking-tighter text-outline/50 group-hover:text-primary/50">
+                (Multiple Allowed)
+              </span>
+            )}
           </button>
         )}
       </div>

@@ -95,6 +95,42 @@ router.post('/logout', (req, res) => {
   res.json({ success: true }); 
 }); 
 
+router.post('/admin/login', loginLimit, async (req, res) => { 
+  const { password } = req.body; 
+  if (!password || password !== process.env.ADMIN_PASSWORD) { 
+    return res.status(401).json({ success: false, error: 'Invalid credentials' }); 
+  } 
+  const token = jwt.sign( 
+    { role: 'admin', id: 'admin' }, 
+    process.env.JWT_SECRET!, 
+    { expiresIn: '8h' } 
+  ); 
+  res.cookie('ae_admin_token', token, { 
+    httpOnly: true, 
+    secure: process.env.NODE_ENV === 'production', 
+    sameSite: 'strict', 
+    maxAge: 8 * 60 * 60 * 1000, 
+  }); 
+  res.json({ success: true }); 
+}); 
+
+router.post('/admin/logout', (req, res) => { 
+  res.clearCookie('ae_admin_token'); 
+  res.json({ success: true }); 
+}); 
+
+router.get('/admin/me', async (req, res) => {
+  const token = (req as any).cookies?.ae_admin_token;
+  if (!token) return res.status(401).json({ success: false, error: 'Unauthorized' });
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    if (payload.role !== 'admin') throw new Error('Not admin');
+    res.json({ success: true, data: { role: 'admin' } });
+  } catch {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+});
+
 router.get('/me', async (req, res) => { 
   const token = (req as any).cookies?.ae_token; 
   if (!token) return res.status(401).json({ success: false, error: 'Not authenticated' }); 

@@ -5,11 +5,6 @@ import { requireAuth, optionalAuth, AuthenticatedRequest } from '../middleware/a
 
 const router = Router(); 
 
-router.use((req, res, next) => { 
-  console.log(`${req.method} ${req.originalUrl}`); 
-  next(); 
-}); 
-
 router.post('/journal', requireAuth, async (req: AuthenticatedRequest, res) => { 
   const userId = req.userId; 
   const { postId } = req.body; 

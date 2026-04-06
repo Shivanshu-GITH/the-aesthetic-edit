@@ -70,13 +70,21 @@ export default function ImageCarousel({ images, className = '', aspectRatio = 'a
       {/* Controls */}
       <button
         className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm text-primary flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-white"
-        onClick={() => paginate(-1)}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          paginate(-1);
+        }}
       >
         <ChevronLeft size={20} />
       </button>
       <button
         className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm text-primary flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-white"
-        onClick={() => paginate(1)}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          paginate(1);
+        }}
       >
         <ChevronRight size={20} />
       </button>
@@ -86,7 +94,9 @@ export default function ImageCarousel({ images, className = '', aspectRatio = 'a
         {images.map((_, index) => (
           <button
             key={index}
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
               setDirection(index > currentIndex ? 1 : -1);
               setCurrentIndex(index);
             }}

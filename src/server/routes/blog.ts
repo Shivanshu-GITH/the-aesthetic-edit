@@ -3,6 +3,7 @@ import sql from '../db.js';
 import { v4 as uuidv4 } from 'uuid'; 
 import { adminLimit, checkAdmin } from '../middleware/admin.js';
 import { z } from 'zod';
+import { formatProduct, formatBlogPost } from '../utils/formatters.js';
 
 const router = Router(); 
 router.use(adminLimit); 
@@ -17,6 +18,7 @@ const blogPostSchema = z.object({
   images: z.array(z.string().url()).optional(),
   category: z.string().min(1),
   author: z.string().min(1).max(100),
+  authorImage: z.string().url().optional().nullable(),
   date: z.string(),
   readTime: z.string(),
   recommendedProducts: z.array(z.string()).optional(),
@@ -31,24 +33,8 @@ const blogCategorySchema = z.object({
   description: z.string().max(2000).optional().nullable()
 });
 
-const formatProduct = (p: any) => ({ 
-  id: p.id, title: p.title, price: p.price, image: p.image, category: p.category, 
-  subCategory: p.sub_category, vibe: Array.isArray(p.vibes) ? p.vibes : [], 
-  affiliateUrl: p.affiliate_url, retailer: p.retailer, description: p.description, 
-  isActive: p.is_active === true || p.is_active === 1 
-}); 
-
-const formatBlogPost = (b: any) => ({ 
-  id: b.id, slug: b.slug, categorySlug: b.category_slug, title: b.title, 
-  excerpt: b.excerpt, content: b.content, image: b.image, 
-  images: Array.isArray(b.images) ? b.images : [],
-  category: b.category, 
-  author: b.author, date: b.date, readTime: b.read_time, 
-  recommendedProducts: Array.isArray(b.recommended_products) ? b.recommended_products : [], 
-  relatedPosts: Array.isArray(b.related_posts) ? b.related_posts : [],
-  isPublished: b.is_published === true || b.is_published === 1 
-}); 
-
+// NOTE: In-memory cache for categories. This resets on server restart and doesn't scale horizontally. 
+// For long-term production use, consider moving this to Redis or Postgres.
 let categoriesCache: any = null; 
 let cacheTimestamp = 0; 
 const CACHE_TTL = 5 * 60 * 1000; 
@@ -57,7 +43,10 @@ router.get('/admin/posts', checkAdmin, async (req, res) => {
   try { 
     const posts = await sql`SELECT * FROM blog_posts ORDER BY created_at DESC`; 
     res.json({ success: true, data: posts.map(formatBlogPost) }); 
-  } catch (e: any) { res.status(500).json({ success: false, error: 'Database error' }); } 
+  } catch (e: any) { 
+    console.error('Fetch admin posts error:', e);
+    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
+  } 
 }); 
 
 router.post('/admin/posts', checkAdmin, async (req, res) => { 
@@ -65,7 +54,7 @@ router.post('/admin/posts', checkAdmin, async (req, res) => {
   if (!validation.success) {
     return res.status(400).json({ success: false, error: validation.error.issues[0].message });
   }
-  const { slug, categorySlug, title, excerpt, content, image, images = [], category, author, date, readTime, recommendedProducts = [], relatedPosts = [], isPublished = true } = validation.data; 
+  const { slug, categorySlug, title, excerpt, content, image, images = [], category, author, authorImage, date, readTime, recommendedProducts = [], relatedPosts = [], isPublished = true } = validation.data; 
   try { 
     const id = uuidv4(); 
     const finalImages = Array.isArray(images) && images.length > 0 ? images : [image];
@@ -74,10 +63,10 @@ router.post('/admin/posts', checkAdmin, async (req, res) => {
     const relatedPostsJson = JSON.stringify(relatedPosts || []);
 
     await sql` 
-      INSERT INTO blog_posts (id, slug, category_slug, title, excerpt, content, image, images, category, author, date, read_time, recommended_products, related_posts, is_published) 
+      INSERT INTO blog_posts (id, slug, category_slug, title, excerpt, content, image, images, category, author, author_image, date, read_time, recommended_products, related_posts, is_published) 
       VALUES (
         ${id}, ${slug}, ${categorySlug}, ${title}, ${excerpt}, ${content}, ${image}, 
-        ${imagesJson}::jsonb, ${category}, ${author}, ${date}, ${readTime}, 
+        ${imagesJson}::jsonb, ${category}, ${author}, ${authorImage || null}, ${date}, ${readTime}, 
         ${recommendedProductsJson}::jsonb, ${relatedPostsJson}::jsonb, ${isPublished ?? true}
       ) 
     `; 
@@ -96,7 +85,7 @@ router.put('/admin/posts/:id', checkAdmin, async (req, res) => {
   if (!validation.success) {
     return res.status(400).json({ success: false, error: validation.error.issues[0].message });
   }
-  const { slug, categorySlug, title, excerpt, content, image, images = [], category, author, date, readTime, recommendedProducts = [], relatedPosts = [], isPublished } = validation.data; 
+  const { slug, categorySlug, title, excerpt, content, image, images = [], category, author, authorImage, date, readTime, recommendedProducts = [], relatedPosts = [], isPublished } = validation.data; 
   try { 
     const existing = await sql`SELECT 1 FROM blog_posts WHERE id = ${id}`; 
     if (existing.length === 0) return res.status(404).json({ success: false, error: 'Post not found' }); 
@@ -107,7 +96,7 @@ router.put('/admin/posts/:id', checkAdmin, async (req, res) => {
  
     await sql` 
       UPDATE blog_posts SET slug = ${slug}, category_slug = ${categorySlug}, title = ${title}, excerpt = ${excerpt}, 
-      content = ${content}, image = ${image}, images = ${imagesJson}::jsonb, category = ${category}, author = ${author}, date = ${date}, 
+      content = ${content}, image = ${image}, images = ${imagesJson}::jsonb, category = ${category}, author = ${author}, author_image = ${authorImage || null}, date = ${date}, 
       read_time = ${readTime}, recommended_products = ${recommendedProductsJson}::jsonb, related_posts = ${relatedPostsJson}::jsonb, is_published = ${isPublished ?? true} 
       WHERE id = ${id} 
     `; 
@@ -198,7 +187,7 @@ router.get('/posts', async (req, res) => {
     `;
     const total = Number(countRows[0].total); 
     const posts = await sql`
-      SELECT id, slug, category_slug, title, excerpt, image, category, author, date, read_time 
+      SELECT id, slug, category_slug, title, excerpt, image, images, category, author, author_image, date, read_time 
       FROM blog_posts 
       WHERE is_published = true 
         AND (${categorySlugFilter}::text IS NULL OR category_slug = ${categorySlugFilter})
@@ -214,29 +203,32 @@ router.get('/posts/:slug', async (req, res) => {
   try { 
     const rows = await sql`SELECT * FROM blog_posts WHERE slug = ${slug} AND is_published = true`; 
     if (rows.length === 0) return res.status(404).json({ success: false, error: 'Post not found' }); 
-    const post = rows[0]; 
-    const recommendedIds: string[] = Array.isArray(post.recommended_products) ? post.recommended_products : []; 
-    let recommendedProducts: any[] = []; 
-    if (recommendedIds.length > 0) { 
-      recommendedProducts = await sql`SELECT * FROM products WHERE id = ANY(${recommendedIds}::text[]) AND is_active = true`; 
-    } 
     
-    const relatedIds: string[] = Array.isArray(post.related_posts) ? post.related_posts : [];
-    let relatedPosts: any[] = [];
-    if (relatedIds.length > 0) {
-      relatedPosts = await sql`SELECT * FROM blog_posts WHERE id = ANY(${relatedIds}::text[]) AND is_published = true`;
-    } else {
-      // Fallback to existing category-based related posts if none explicitly linked
-      relatedPosts = await sql` 
-        SELECT * FROM blog_posts WHERE category_slug = ${post.category_slug} AND slug != ${slug} AND is_published = true LIMIT 3 
-      `; 
+    const post = formatBlogPost(rows[0]);
+    
+    // Fetch full product details for recommended products
+    let recommendedProducts = [];
+    if (post.recommendedProducts && post.recommendedProducts.length > 0) {
+      const productRows = await sql`SELECT * FROM products WHERE id = ANY(${post.recommendedProducts}) AND is_active = true`;
+      recommendedProducts = productRows.map(formatProduct);
     }
 
-    res.json({ 
-      success: true, 
-      data: { post: formatBlogPost(post), recommendedProducts: recommendedProducts.map(formatProduct), relatedPosts: relatedPosts.map(formatBlogPost) } 
-    }); 
-  } catch (e: any) { res.status(500).json({ success: false, error: 'Database error' }); } 
+    // Fetch related posts summary
+    let relatedPosts = [];
+    if (post.relatedPosts && post.relatedPosts.length > 0) {
+      const postRows = await sql`SELECT id, slug, category_slug, title, excerpt, image, category, author, author_image, date, read_time FROM blog_posts WHERE id = ANY(${post.relatedPosts}) AND is_published = true`;
+      relatedPosts = postRows.map(formatBlogPost);
+    } else {
+      // Fallback: posts from same category
+      const postRows = await sql`SELECT id, slug, category_slug, title, excerpt, image, category, author, author_image, date, read_time FROM blog_posts WHERE category_slug = ${post.categorySlug} AND id != ${post.id} AND is_published = true LIMIT 3`;
+      relatedPosts = postRows.map(formatBlogPost);
+    }
+
+    res.json({ success: true, data: { post, recommendedProducts, relatedPosts } }); 
+  } catch (e: any) { 
+    console.error('Error fetching blog post details:', e);
+    res.status(500).json({ success: false, error: 'Database error' }); 
+  } 
 }); 
 
 export default router; 

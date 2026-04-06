@@ -5,12 +5,27 @@ import { Clock, ArrowRight } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
 import { useBlogCategories, useBlogPosts } from '../hooks/useBlog';
 import { BlogPostCardGridSkeleton } from '../components/Skeleton';
+import ImageCarousel from '../components/ImageCarousel';
 
 export default function BlogCategory() {
   const { category: categorySlug } = useParams();
   
   const { categories, loading: catLoading } = useBlogCategories();
   const { posts, loading: postsLoading, error } = useBlogPosts(categorySlug, 1, 12);
+  const [siteConfigs, setSiteConfigs] = React.useState<Record<string, string>>({});
+
+  React.useEffect(() => {
+    fetch('/api/home-shop/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setSiteConfigs(data.data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const defaultAuthorImage =
+    siteConfigs.blog_default_author_image ||
+    'https://i.pravatar.cc/150?u=author';
 
   const category = useMemo(() => 
     categories.find(c => c.slug === categorySlug),
@@ -80,19 +95,27 @@ export default function BlogCategory() {
               className="group space-y-6 bg-white p-4 rounded-[32px] border border-outline-variant/30 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
             >
               <Link to={`/blog/${categorySlug}/${post.slug}`} className="block aspect-[4/5] rounded-[24px] overflow-hidden relative shadow-sm bg-surface-container">
-                <img 
-                  src={post.image} 
-                  alt={post.title} 
-                  loading="lazy"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  referrerPolicy="no-referrer"
+                <ImageCarousel
+                  images={Array.isArray(post.images) && post.images.length > 0 ? post.images : [post.image]}
+                  aspectRatio="aspect-[4/5]"
+                  className="rounded-none"
                 />
               </Link>
               <div className="space-y-4 px-2">
-                <div className="flex items-center gap-4 font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
-                  <span>{post.date}</span>
-                  <span className="w-1 h-1 bg-accent-peach rounded-full"></span>
-                  <span className="flex items-center gap-1"><Clock size={12} /> {post.readTime}</span>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+                    <span>{post.date}</span>
+                    <span className="w-1 h-1 bg-accent-peach rounded-full"></span>
+                    <span className="flex items-center gap-1"><Clock size={12} /> {post.readTime}</span>
+                  </div>
+                  <div className="w-7 h-7 rounded-full overflow-hidden bg-surface-container border border-outline-variant/30">
+                    <img
+                      src={post.authorImage || defaultAuthorImage}
+                      alt={post.author}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
                 </div>
                 <Link to={`/blog/${categorySlug}/${post.slug}`}>
                   <h3 className="text-2xl font-headline font-bold leading-snug text-on-surface group-hover:text-primary transition-colors">

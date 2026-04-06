@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Filter, Shirt, Home, Sparkles, Baby, Laptop, Flame, DollarSign, Star, ChevronDown, ChevronLeft, ChevronRight, Package, X } from 'lucide-react';
+import { Search, Filter, Shirt, Home, Sparkles, Baby, Laptop, Flame, IndianRupee, Star, ChevronDown, ChevronLeft, ChevronRight, Package, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import ProductCard from '../components/ProductCard';
@@ -18,10 +18,21 @@ const ICON_MAP: Record<string, any> = {
   'Package': Package
 };
 
-const QUICK_FILTERS = [
-  { name: 'Trending', icon: Flame, filter: { vibe: 'Pinteresty' } },
-  { name: 'Under $50', icon: DollarSign, filter: { maxPrice: 50 } },
-  { name: 'Top Rated', icon: Star, filter: { topRated: true } },
+interface QuickFilter {
+  name: string;
+  icon: any;
+  filter: {
+    vibe?: string;
+    trending?: string;
+    maxPrice?: number;
+    topRated?: string;
+  };
+}
+
+const QUICK_FILTERS: QuickFilter[] = [
+  { name: 'Trending', icon: Flame, filter: { trending: 'true' } },
+  { name: 'Under ₹1000', icon: IndianRupee, filter: { maxPrice: 1000 } },
+  { name: 'Top Rated', icon: Star, filter: { topRated: 'true' } },
 ];
 
 export default function Shop() {
@@ -33,9 +44,11 @@ export default function Shop() {
   const selectedCategory = searchParams.get('category') || 'All';
   const selectedSubCategory = searchParams.get('subCategory') || 'All';
   const selectedVibe = searchParams.get('vibe') || 'All';
- const searchQuery = searchParams.get('search') || '';
+  const searchQuery = searchParams.get('search') || '';
   const maxPriceParam = searchParams.get('maxPrice');
   const maxPrice = maxPriceParam ? Number(maxPriceParam) : null;
+  const topRated = searchParams.get('topRated') === 'true';
+  const trending = searchParams.get('trending') === 'true';
   const currentPage = Number(searchParams.get('page')) || 1;
 
   const [openCategories, setOpenCategories] = React.useState<string[]>(['Clothing & Accessories']);
@@ -70,9 +83,11 @@ export default function Shop() {
     vibe: selectedVibe !== 'All' ? selectedVibe : undefined,
     search: searchQuery || undefined,
     maxPrice: maxPrice || undefined,
+    topRated: topRated || undefined,
+    trending: trending || undefined,
     page: currentPage,
     limit: 12
-  }), [selectedCategory, selectedSubCategory, selectedVibe, searchQuery, maxPrice, currentPage]);
+  }), [selectedCategory, selectedSubCategory, selectedVibe, searchQuery, maxPrice, topRated, trending, currentPage]);
 
   const { products, loading, error, meta } = useProducts(filters);
 
@@ -98,6 +113,25 @@ export default function Shop() {
     setSearchParams(newParams, { replace: true });
   };
 
+  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
+
+  // Sync local query only when URL search param actually changes (e.g. clear filters)
+  useEffect(() => {
+    if (searchQuery !== localSearchQuery) {
+      setLocalSearchQuery(searchQuery);
+    }
+  }, [searchQuery]);
+
+  // Update URL search param when local query changes (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearchQuery !== searchQuery) {
+        updateFilters({ search: localSearchQuery });
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [localSearchQuery]);
+
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   const toggleCategory = (name: string) => {
@@ -106,22 +140,26 @@ export default function Shop() {
     );
   };
 
+  const SearchCard = () => (
+    <div className="bg-white p-6 rounded-4xl border border-outline-variant/50 shadow-sm space-y-4">
+      <h3 className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-outline">Search</h3>
+      <div className="relative">
+        <input 
+          type="text" 
+          placeholder="Find something..."
+          value={localSearchQuery}
+          onChange={(e) => setLocalSearchQuery(e.target.value)}
+          className="w-full pl-10 pr-4 py-3 rounded-xl bg-surface border border-outline-variant/30 focus:outline-none focus:border-primary transition-all font-body text-sm"
+        />
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-outline" />
+      </div>
+    </div>
+  );
+
   const FilterContent = () => (
     <div className="space-y-8">
       {/* Search Card */}
-      <div className="bg-white p-6 rounded-4xl border border-outline-variant/50 shadow-sm space-y-4">
-        <h3 className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-outline">Search</h3>
-        <div className="relative">
-          <input 
-            type="text" 
-            placeholder="Find something..."
-            value={searchQuery}
-            onChange={(e) => updateFilters({ search: e.target.value })}
-            className="w-full pl-10 pr-4 py-3 rounded-xl bg-surface border border-outline-variant/30 focus:outline-none focus:border-primary transition-all font-body text-sm"
-          />
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-outline" />
-        </div>
-      </div>
+      {SearchCard()}
 
       {/* Quick Filters Card */}
       <div className="bg-white p-6 rounded-4xl border border-outline-variant/50 shadow-sm space-y-4">
@@ -131,9 +169,12 @@ export default function Shop() {
             <button 
               key={q.name}
               onClick={() => {
-                const updates: Record<string, string | null> = {};
-                if (q.filter.vibe) updates.vibe = q.filter.vibe;
-                if (q.filter.maxPrice) updates.maxPrice = q.filter.maxPrice.toString();
+                const updates: Record<string, string | null> = {
+                  vibe: q.filter.vibe || null,
+                  trending: q.filter.trending || null,
+                  maxPrice: q.filter.maxPrice?.toString() || null,
+                  topRated: q.filter.topRated?.toString() || null,
+                };
                 updateFilters(updates);
                 setIsMobileFilterOpen(false);
               }}
@@ -316,21 +357,33 @@ export default function Shop() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
           {/* Desktop Sidebar Filters */}
           <aside className="hidden lg:block space-y-8">
-            <FilterContent />
+            {FilterContent()}
           </aside>
 
           {/* Product Grid */}
-          <main className="lg:col-span-3">
+          <main className="lg:col-span-3 space-y-8 md:space-y-12">
             {loading ? (
               <ProductCardGridSkeleton count={9} />
             ) : error ? (
-              <div className="text-center py-24 space-y-4">
-                <p className="font-serif italic text-2xl text-on-surface-variant">{error || "Couldn't load products. Please refresh."}</p>
+              <div className="bg-red-50 text-red-600 p-8 rounded-4xl text-center font-serif italic">
+                {error || "Couldn't load products. Please refresh."}
+              </div>
+            ) : products.length === 0 ? (
+              <div className="bg-white p-12 md:p-20 rounded-[48px] border border-outline-variant/30 text-center space-y-6 shadow-sm">
+                <div className="w-16 h-16 bg-surface-container rounded-full flex items-center justify-center mx-auto text-outline/50">
+                  <Search size={32} />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">No matches found</h3>
+                  <p className="text-on-surface-variant font-serif italic max-w-md mx-auto">
+                    {siteConfigs.shop_empty_message || 'No products found matching your criteria.'}
+                  </p>
+                </div>
                 <button 
-                  onClick={() => window.location.reload()}
-                  className="text-primary font-label text-xs uppercase tracking-widest font-bold border-b border-primary"
+                  onClick={() => updateFilters({ category: 'All', subCategory: 'All', vibe: 'All', search: '', maxPrice: null, topRated: null })}
+                  className="text-primary font-label text-[10px] uppercase tracking-widest font-bold border-b border-primary pb-1"
                 >
-                  Refresh Page
+                  Clear all filters
                 </button>
               </div>
             ) : (
@@ -367,20 +420,6 @@ export default function Shop() {
                     </p>
                   </div>
                 )}
-
-                {products.length === 0 && (
-                  <div className="text-center py-24 space-y-4">
-                    <p className="font-serif italic text-2xl text-on-surface-variant">
-                      {siteConfigs.shop_empty_message || 'No products found.'}
-                    </p>
-                    <button 
-                      onClick={() => updateFilters({ category: 'All', vibe: 'All', search: '', maxPrice: null })}
-                      className="text-primary font-label text-xs uppercase tracking-widest font-bold border-b border-primary"
-                    >
-                      Clear all filters
-                    </button>
-                  </div>
-                )}
               </>
             )}
           </main>
@@ -414,7 +453,7 @@ export default function Shop() {
                   <X size={24} />
                 </button>
               </div>
-              <FilterContent />
+              {FilterContent()}
             </motion.div>
           </>
         )}

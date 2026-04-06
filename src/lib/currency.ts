@@ -177,7 +177,7 @@ export async function formatPriceAsync(priceInUSD: number): Promise<string> {
  * @param priceInUSD - Price in US dollars 
  */ 
 export function formatPrice(priceInUSD: number): string { 
-  if (!cache) return `$${priceInUSD.toFixed(0)}`; 
+  if (!cache) return `₹${(priceInUSD * FALLBACK_RATES.INR).toFixed(0)}`; 
   return applyFormat(priceInUSD, cache.currency, cache.rates); 
 } 
  

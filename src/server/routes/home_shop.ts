@@ -35,7 +35,10 @@ router.get('/admin/shop-categories', checkAdmin, async (req, res) => {
   try { 
     const categories = await sql`SELECT * FROM shop_categories ORDER BY created_at DESC`; 
     res.json({ success: true, data: categories }); 
-  } catch (e: any) { res.status(500).json({ success: false, error: 'Database error' }); } 
+  } catch (e: any) { 
+    console.error('Fetch shop categories error:', e);
+    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
+  } 
 }); 
 
 router.post('/admin/shop-categories', checkAdmin, async (req, res) => { 
@@ -98,7 +101,10 @@ router.get('/admin/moods', checkAdmin, async (req, res) => {
   try { 
     const moods = await sql`SELECT * FROM home_mood_categories ORDER BY created_at DESC`; 
     res.json({ success: true, data: moods }); 
-  } catch (e: any) { res.status(500).json({ success: false, error: 'Database error' }); } 
+  } catch (e: any) { 
+    console.error('Fetch moods error:', e);
+    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
+  } 
 }); 
 
 router.post('/admin/moods', checkAdmin, async (req, res) => { 
@@ -162,7 +168,10 @@ router.get('/admin/find-here', checkAdmin, async (req, res) => {
   try { 
     const items = await sql`SELECT * FROM home_find_here_categories ORDER BY created_at DESC`; 
     res.json({ success: true, data: items }); 
-  } catch (e: any) { res.status(500).json({ success: false, error: 'Database error' }); } 
+  } catch (e: any) { 
+    console.error('Fetch find-here items error:', e);
+    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
+  } 
 }); 
 
 router.post('/admin/find-here', checkAdmin, async (req, res) => { 
@@ -223,7 +232,10 @@ router.get('/config', async (req, res) => {
     const configMap: Record<string, string> = {};
     configs.forEach(c => configMap[c.key] = c.value);
     res.json({ success: true, data: configMap });
-  } catch (e: any) { res.status(500).json({ success: false, error: 'Database error' }); }
+  } catch (e: any) {
+    console.error('Fetch site config error:', e);
+    res.status(500).json({ success: false, error: 'Database error: ' + e.message });
+  }
 });
 
 const siteConfigSchema = z.record(z.string(), z.string());

@@ -12,7 +12,10 @@ export default function FreeGuide() {
 
   const [isLoading, setIsLoading] = React.useState(false);
 
-  const APP_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000';
+  const APP_URL =
+    (typeof window !== 'undefined' && window.location?.origin) ||
+    import.meta.env.VITE_APP_URL ||
+    'http://localhost:3000';
 
   const validate = () => {
     const newErrors: { name?: string, email?: string } = {};

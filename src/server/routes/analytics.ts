@@ -1,16 +1,10 @@
 import { Router } from 'express'; 
 import sql from '../db.js'; 
 import { adminLimit, checkAdmin } from '../middleware/admin.js'; 
+import { formatProduct } from '../utils/formatters.js';
 
 const router = Router(); 
 router.use(adminLimit); 
-
-const formatProduct = (p: any) => ({ 
-  id: p.id, title: p.title, price: p.price, image: p.image, category: p.category, 
-  subCategory: p.sub_category, vibe: Array.isArray(p.vibes) ? p.vibes : [], 
-  affiliateUrl: p.affiliate_url, retailer: p.retailer, description: p.description, 
-  isActive: p.is_active === true || p.is_active === 1 
-}); 
 
 router.get('/summary', checkAdmin, async (req, res) => { 
   try { 
@@ -23,26 +17,48 @@ router.get('/summary', checkAdmin, async (req, res) => {
     const totalClicks = Number(clicksRows[0].count); 
     const totalSaves = Number(savesRows[0].count); 
 
-    const [topClickedProducts, topPinterestSaved, allProducts, recentLeads] = await Promise.all([ 
-      sql`SELECT p.*, COUNT(c.id) as clicks FROM products p LEFT JOIN affiliate_clicks c ON p.id = c.product_id GROUP BY p.id ORDER BY clicks DESC LIMIT 10`, 
-      sql`SELECT p.*, COUNT(s.id) as saves FROM products p LEFT JOIN pinterest_saves s ON p.id = s.product_id GROUP BY p.id ORDER BY saves DESC LIMIT 10`, 
-      sql`SELECT * FROM products ORDER BY created_at DESC`, 
-      sql`SELECT id, name, email, source, is_confirmed, created_at FROM leads ORDER BY created_at DESC LIMIT 10`, 
-    ]); 
+    const productsWithStats = await sql`
+      SELECT 
+          p.*, 
+          COALESCE(c.clicks, 0) as clicks, 
+          COALESCE(s.saves, 0) as saves
+      FROM products p
+      LEFT JOIN (
+          SELECT product_id, COUNT(*) as clicks 
+          FROM affiliate_clicks 
+          GROUP BY product_id
+      ) c ON p.id = c.product_id
+      LEFT JOIN (
+          SELECT product_id, COUNT(*) as saves 
+          FROM pinterest_saves 
+          GROUP BY product_id
+      ) s ON p.id = s.product_id
+    `;
+
+    const recentLeads = await sql`SELECT id, name, email, source, is_confirmed, created_at FROM leads ORDER BY created_at DESC LIMIT 10`; 
+
+    const formattedProducts = productsWithStats.map((p: any) => ({
+      ...formatProduct(p),
+      clicks: Number(p.clicks),
+      saves: Number(p.saves)
+    }));
+
+    const topClickedProducts = [...formattedProducts].sort((a, b) => b.clicks - a.clicks || b.saves - a.saves);
+    const topPinterestSaved = [...formattedProducts].sort((a, b) => b.saves - a.saves || b.clicks - a.clicks);
 
     res.json({ 
       success: true, 
       data: { 
         totalLeads, totalClicks, totalSaves, 
-        topClickedProducts: topClickedProducts.map((p: any) => ({ ...formatProduct(p), clicks: Number(p.clicks) })), 
-        topPinterestSaved: topPinterestSaved.map((p: any) => ({ ...formatProduct(p), saves: Number(p.saves) })), 
+        topClickedProducts, 
+        topPinterestSaved, 
         recentLeads, 
-        allProducts: allProducts.map(formatProduct) 
+        allProducts: formattedProducts 
       } 
     }); 
   } catch (e: any) { 
-    console.error(e); 
-    res.status(500).json({ success: false, error: 'Database error' }); 
+    console.error('Analytics summary error:', e); 
+    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
   } 
 }); 
 

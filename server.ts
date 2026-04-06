@@ -1,3 +1,6 @@
+import dotenv from 'dotenv'; 
+dotenv.config(); 
+
 import express from 'express'; 
 import path from 'path'; 
 import cookieParser from 'cookie-parser'; 
@@ -17,11 +20,20 @@ import currencyRouter from './src/server/routes/currency.js';
 import geoRouter from './src/server/routes/geo.js'; 
 import homeShopRouter from './src/server/routes/home_shop.js'; 
 import uploadRouter from './src/server/routes/upload.js';
-import dotenv from 'dotenv'; 
- 
-dotenv.config(); 
  
 async function startServer() { 
+  // Validate required env vars at startup 
+  const required = ['DATABASE_URL', 'JWT_SECRET', 'ADMIN_PASSWORD']; 
+  const missing = required.filter(k => !process.env[k]); 
+  if (missing.length > 0) { 
+    console.error(`Missing required environment variables: ${missing.join(', ')}`); 
+    process.exit(1); 
+  } 
+  if (process.env.JWT_SECRET!.length < 32) { 
+    console.error('JWT_SECRET must be at least 32 characters'); 
+    process.exit(1); 
+  }
+
   const app = express(); 
   const PORT = Number(process.env.PORT) || 3000; 
  
@@ -43,8 +55,17 @@ async function startServer() {
       } 
     } : false, 
   })); 
-  app.use(cors({ origin: process.env.APP_URL || '*' })); 
-  app.use(express.json({ limit: '10kb' })); 
+  const allowedOrigins = process.env.APP_URL 
+    ? [process.env.APP_URL] 
+    : ['http://localhost:3000', 'http://localhost:5173']; 
+ 
+  app.use(cors({ 
+    origin: allowedOrigins, 
+    credentials: true, 
+  })); 
+  // Admin payloads (blog markdown, product arrays) can exceed 10kb.
+  app.use(express.json({ limit: '2mb' })); 
+  app.use(express.urlencoded({ extended: true, limit: '2mb' }));
   app.use(cookieParser()); 
  
   if (process.env.NODE_ENV !== 'production') { 

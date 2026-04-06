@@ -43,7 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setError(null);
     if (!email || !email.includes('@')) throw new Error('Please enter a valid email address.'); 
-    if (!password || password.length < 6) throw new Error('Password must be at least 6 characters.'); 
+    if (!password || password.length < 8) throw new Error('Password must be at least 8 characters.'); 
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -67,16 +67,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!name || name.trim().length < 2) throw new Error('Name must be at least 2 characters.'); 
     if (!email || !email.includes('@')) throw new Error('Please enter a valid email address.'); 
     if (!password || password.length < 8) throw new Error('Password must be at least 8 characters.'); 
-    console.log('Attempting signup...', { name, email });
     try {
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
       });
-      console.log('Signup response received:', response.status);
       const res: ApiResponse<{ user: User }> = await response.json();
-      console.log('Signup result:', res);
       if (res.success && res.data) {
         setUser(res.data.user);
       } else {

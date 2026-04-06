@@ -154,8 +154,13 @@ export default function BlogPost() {
           className="flex items-center justify-center gap-4 md:gap-6 relative z-10"
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-white shadow-sm">
-              <img src="https://i.pravatar.cc/150?u=elena" alt={post.author} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-white shadow-sm bg-surface-container">
+              <img 
+                src={post.authorImage || "https://i.pravatar.cc/150?u=elena"} 
+                alt={post.author} 
+                className="w-full h-full object-cover" 
+                referrerPolicy="no-referrer" 
+              />
             </div>
             <span className="font-label text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-on-surface">{post.author}</span>
           </div>

@@ -9,6 +9,8 @@ const currencyLimit = rateLimit({
   message: { success: false, error: 'Rate limited' }, 
 }); 
  
+// NOTE: In-memory cache for currency rates. This resets on server restart and doesn't scale horizontally. 
+// For long-term production use, consider moving this to Redis or Postgres.
 let ratesCache: { rates: Record<string, number>; fetchedAt: number } | null = null; 
 const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours 
  
