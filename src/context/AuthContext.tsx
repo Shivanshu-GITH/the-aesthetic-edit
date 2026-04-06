@@ -18,7 +18,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkAuth = async () => { 
+    // Skip fetching standard auth if we are on admin pages or if password auth is used
+    if (window.location.pathname.startsWith('/admin')) {
+      setLoading(false);
+      return;
+    }
+
+    const checkUser = async () => { 
       try { 
         const res = await fetch('/api/auth/me'); 
         const data = await res.json(); 
@@ -31,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false); 
       } 
     }; 
-    checkAuth();
+    checkUser();
   }, []);
 
   const login = async (email: string, password: string) => {

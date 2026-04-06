@@ -1,24 +1,33 @@
 import { Router } from 'express'; 
 import sql from '../db.js'; 
-import { rateLimit } from 'express-rate-limit'; 
 import { v4 as uuidv4 } from 'uuid'; 
-
-const adminLimit = rateLimit({ 
-  windowMs: 15 * 60 * 1000, 
-  max: 1000, 
-  message: { success: false, error: 'Too many requests, please try again later' }, 
-  standardHeaders: true, 
-  legacyHeaders: false, 
-}); 
+import { adminLimit, checkAdmin } from '../middleware/admin.js';
+import { z } from 'zod';
+import { rateLimit } from 'express-rate-limit';
 
 const router = Router(); 
 router.use(adminLimit); 
+
+const productSchema = z.object({
+  title: z.string().min(1).max(255),
+  price: z.number().min(0),
+  image: z.string().url(),
+  images: z.array(z.string().url()).optional(),
+  category: z.string().min(1),
+  subCategory: z.string().min(1),
+  vibes: z.array(z.string()).min(1),
+  affiliateUrl: z.string().url(),
+  retailer: z.string().max(100).optional().nullable(),
+  description: z.string().max(5000).optional().nullable(),
+  isActive: z.boolean().optional()
+});
 
 const formatProduct = (p: any) => ({ 
   id: p.id, 
   title: p.title, 
   price: p.price, 
   image: p.image, 
+  images: Array.isArray(p.images) ? p.images : [],
   category: p.category, 
   subCategory: p.sub_category, 
   vibe: Array.isArray(p.vibes) ? p.vibes : [], 
@@ -34,11 +43,7 @@ const affiliateClickLimit = rateLimit({
   message: { success: false, error: 'Too many clicks, please try again later' } 
 }); 
 
-router.get('/admin/all', async (req, res) => { 
-  const adminPassword = req.get('ADMIN_PASSWORD'); 
-  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
+router.get('/admin/all', checkAdmin, async (req, res) => { 
   try { 
     const products = await sql`SELECT * FROM products ORDER BY created_at DESC`; 
     res.json({ success: true, data: products.map(formatProduct) }); 
@@ -48,21 +53,19 @@ router.get('/admin/all', async (req, res) => {
   } 
 }); 
 
-router.post('/admin/create', async (req, res) => { 
-  const adminPassword = req.get('ADMIN_PASSWORD'); 
-  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
-  const { title, price, image, category, subCategory, vibes, affiliateUrl, retailer, description, isActive = true } = req.body; 
-  if (!title || !price || !image || !category || !subCategory || !vibes || !affiliateUrl) { 
-    return res.status(400).json({ success: false, error: 'Missing required fields' }); 
-  } 
+router.post('/admin/create', checkAdmin, async (req, res) => { 
+  const validation = productSchema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json({ success: false, error: validation.error.issues[0].message });
+  }
+  const { title, price, image, images = [], category, subCategory, vibes, affiliateUrl, retailer, description, isActive = true } = validation.data; 
   try { 
     const id = uuidv4(); 
-    const vibesJson = JSON.stringify(Array.isArray(vibes) ? vibes : [vibes]); 
+    const vibesJson = JSON.stringify(vibes); 
+    const imagesJson = JSON.stringify(images.length > 0 ? images : [image]);
     await sql` 
-      INSERT INTO products (id, title, price, image, category, sub_category, vibes, affiliate_url, retailer, description, is_active) 
-      VALUES (${id}, ${title}, ${price}, ${image}, ${category}, ${subCategory}, ${vibesJson}::jsonb, ${affiliateUrl}, ${retailer || null}, ${description || null}, ${isActive}) 
+      INSERT INTO products (id, title, price, image, images, category, sub_category, vibes, affiliate_url, retailer, description, is_active) 
+      VALUES (${id}, ${title}, ${price}, ${image}, ${imagesJson}::jsonb, ${category}, ${subCategory}, ${vibesJson}::jsonb, ${affiliateUrl}, ${retailer || null}, ${description || null}, ${isActive}) 
     `; 
     const rows = await sql`SELECT * FROM products WHERE id = ${id}`; 
     res.status(201).json({ success: true, data: formatProduct(rows[0]) }); 
@@ -72,22 +75,23 @@ router.post('/admin/create', async (req, res) => {
   } 
 }); 
 
-router.put('/admin/:id', async (req, res) => { 
-  const adminPassword = req.get('ADMIN_PASSWORD'); 
-  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
+router.put('/admin/:id', checkAdmin, async (req, res) => { 
   const { id } = req.params; 
-  const { title, price, image, category, subCategory, vibes, affiliateUrl, retailer, description, isActive } = req.body; 
+  const validation = productSchema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json({ success: false, error: validation.error.issues[0].message });
+  }
+  const { title, price, image, images = [], category, subCategory, vibes, affiliateUrl, retailer, description, isActive } = validation.data; 
   try { 
     const existing = await sql`SELECT 1 FROM products WHERE id = ${id}`; 
     if (existing.length === 0) { 
       return res.status(404).json({ success: false, error: 'Product not found' }); 
     } 
-    const vibesJson = JSON.stringify(Array.isArray(vibes) ? vibes : [vibes]); 
+    const vibesJson = JSON.stringify(vibes); 
+    const imagesJson = JSON.stringify(images.length > 0 ? images : [image]);
     await sql` 
       UPDATE products 
-      SET title = ${title}, price = ${price}, image = ${image}, category = ${category}, 
+      SET title = ${title}, price = ${price}, image = ${image}, images = ${imagesJson}::jsonb, category = ${category}, 
           sub_category = ${subCategory}, vibes = ${vibesJson}::jsonb, affiliate_url = ${affiliateUrl}, 
           retailer = ${retailer || null}, description = ${description || null}, is_active = ${isActive} 
        WHERE id = ${id} 
@@ -96,33 +100,22 @@ router.put('/admin/:id', async (req, res) => {
     res.json({ success: true, data: formatProduct(rows[0]) }); 
   } catch (error: any) { 
     console.error(error); 
-    res.status(500).json({ success: false, error: 'Database error' }); 
+    res.status(500).json({ success: false, error: 'Failed to update product' }); 
   } 
 }); 
 
-router.delete('/admin/:id', async (req, res) => { 
-  const adminPassword = req.get('ADMIN_PASSWORD'); 
-  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
+router.delete('/admin/:id', checkAdmin, async (req, res) => { 
   const { id } = req.params; 
   try { 
-    const result = await sql`DELETE FROM products WHERE id = ${id} RETURNING id`; 
-    if (result.length === 0) { 
-      return res.status(404).json({ success: false, error: 'Product not found' }); 
-    } 
+    await sql`DELETE FROM products WHERE id = ${id}`; 
     res.json({ success: true }); 
   } catch (error: any) { 
     console.error(error); 
-    res.status(500).json({ success: false, error: 'Database error' }); 
+    res.status(500).json({ success: false, error: 'Failed to delete product' }); 
   } 
 }); 
 
-router.patch('/:id', async (req, res) => { 
-  const adminPassword = req.get('ADMIN_PASSWORD'); 
-  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
+router.patch('/:id', checkAdmin, async (req, res) => { 
   const { id } = req.params; 
   const { affiliateUrl } = req.body; 
   try { 
@@ -137,11 +130,7 @@ router.patch('/:id', async (req, res) => {
   } 
 }); 
 
-router.patch('/:id/toggle-active', async (req, res) => { 
-  const adminPassword = req.get('ADMIN_PASSWORD'); 
-  if (!adminPassword || adminPassword !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
+router.patch('/:id/toggle-active', checkAdmin, async (req, res) => { 
   const { id } = req.params; 
   try { 
     const rows = await sql`SELECT is_active FROM products WHERE id = ${id}`; 

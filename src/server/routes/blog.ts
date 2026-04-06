@@ -1,18 +1,35 @@
 import { Router } from 'express'; 
 import sql from '../db.js'; 
 import { v4 as uuidv4 } from 'uuid'; 
-import { rateLimit } from 'express-rate-limit'; 
-
-const adminLimit = rateLimit({ 
-  windowMs: 15 * 60 * 1000, 
-  max: 1000, 
-  message: { success: false, error: 'Too many requests, please try again later' }, 
-  standardHeaders: true, 
-  legacyHeaders: false, 
-}); 
+import { adminLimit, checkAdmin } from '../middleware/admin.js';
+import { z } from 'zod';
 
 const router = Router(); 
 router.use(adminLimit); 
+
+const blogPostSchema = z.object({
+  slug: z.string().min(1).max(255),
+  categorySlug: z.string().min(1),
+  title: z.string().min(1).max(255),
+  excerpt: z.string().min(1).max(1000),
+  content: z.string().min(1),
+  image: z.string().url(),
+  images: z.array(z.string().url()).optional(),
+  category: z.string().min(1),
+  author: z.string().min(1).max(100),
+  date: z.string(),
+  readTime: z.string(),
+  recommendedProducts: z.array(z.string()).optional(),
+  relatedPosts: z.array(z.string()).optional(),
+  isPublished: z.boolean().optional()
+});
+
+const blogCategorySchema = z.object({
+  title: z.string().min(1).max(255),
+  slug: z.string().min(1).max(255),
+  image: z.string().url(),
+  description: z.string().max(2000).optional().nullable()
+});
 
 const formatProduct = (p: any) => ({ 
   id: p.id, title: p.title, price: p.price, image: p.image, category: p.category, 
@@ -23,9 +40,12 @@ const formatProduct = (p: any) => ({
 
 const formatBlogPost = (b: any) => ({ 
   id: b.id, slug: b.slug, categorySlug: b.category_slug, title: b.title, 
-  excerpt: b.excerpt, content: b.content, image: b.image, category: b.category, 
+  excerpt: b.excerpt, content: b.content, image: b.image, 
+  images: Array.isArray(b.images) ? b.images : [],
+  category: b.category, 
   author: b.author, date: b.date, readTime: b.read_time, 
   recommendedProducts: Array.isArray(b.recommended_products) ? b.recommended_products : [], 
+  relatedPosts: Array.isArray(b.related_posts) ? b.related_posts : [],
   isPublished: b.is_published === true || b.is_published === 1 
 }); 
 
@@ -33,94 +53,96 @@ let categoriesCache: any = null;
 let cacheTimestamp = 0; 
 const CACHE_TTL = 5 * 60 * 1000; 
 
-router.get('/admin/posts', async (req, res) => { 
-  if (req.get('ADMIN_PASSWORD') !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
+router.get('/admin/posts', checkAdmin, async (req, res) => { 
   try { 
     const posts = await sql`SELECT * FROM blog_posts ORDER BY created_at DESC`; 
     res.json({ success: true, data: posts.map(formatBlogPost) }); 
   } catch (e: any) { res.status(500).json({ success: false, error: 'Database error' }); } 
 }); 
 
-router.post('/admin/posts', async (req, res) => { 
-  if (req.get('ADMIN_PASSWORD') !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
-  const { slug, categorySlug, title, excerpt, content, image, category, author, date, readTime, recommendedProducts = [], isPublished = true } = req.body; 
-  if (!slug || !categorySlug || !title || !excerpt || !content || !image || !category || !author || !date || !readTime) { 
-    return res.status(400).json({ success: false, error: 'Missing required fields' }); 
-  } 
+router.post('/admin/posts', checkAdmin, async (req, res) => { 
+  const validation = blogPostSchema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json({ success: false, error: validation.error.issues[0].message });
+  }
+  const { slug, categorySlug, title, excerpt, content, image, images = [], category, author, date, readTime, recommendedProducts = [], relatedPosts = [], isPublished = true } = validation.data; 
   try { 
     const id = uuidv4(); 
-    const rpJson = JSON.stringify(Array.isArray(recommendedProducts) ? recommendedProducts : []); 
+    const finalImages = Array.isArray(images) && images.length > 0 ? images : [image];
+    const imagesJson = JSON.stringify(finalImages);
+    const recommendedProductsJson = JSON.stringify(recommendedProducts || []);
+    const relatedPostsJson = JSON.stringify(relatedPosts || []);
+
     await sql` 
-      INSERT INTO blog_posts (id, slug, category_slug, title, excerpt, content, image, category, author, date, read_time, recommended_products, is_published) 
-      VALUES (${id}, ${slug}, ${categorySlug}, ${title}, ${excerpt}, ${content}, ${image}, ${category}, ${author}, ${date}, ${readTime}, ${rpJson}::jsonb, ${isPublished}) 
+      INSERT INTO blog_posts (id, slug, category_slug, title, excerpt, content, image, images, category, author, date, read_time, recommended_products, related_posts, is_published) 
+      VALUES (
+        ${id}, ${slug}, ${categorySlug}, ${title}, ${excerpt}, ${content}, ${image}, 
+        ${imagesJson}::jsonb, ${category}, ${author}, ${date}, ${readTime}, 
+        ${recommendedProductsJson}::jsonb, ${relatedPostsJson}::jsonb, ${isPublished ?? true}
+      ) 
     `; 
     const rows = await sql`SELECT * FROM blog_posts WHERE id = ${id}`; 
     res.status(201).json({ success: true, data: formatBlogPost(rows[0]) }); 
   } catch (e: any) { 
+    console.error('Error creating blog post:', e);
     if (e.code === '23505') return res.status(409).json({ success: false, error: 'Slug already exists' }); 
-    res.status(500).json({ success: false, error: 'Database error' }); 
+    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
   } 
 }); 
 
-router.put('/admin/posts/:id', async (req, res) => { 
-  if (req.get('ADMIN_PASSWORD') !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
+router.put('/admin/posts/:id', checkAdmin, async (req, res) => { 
   const { id } = req.params; 
-  const { slug, categorySlug, title, excerpt, content, image, category, author, date, readTime, recommendedProducts = [], isPublished } = req.body; 
+  const validation = blogPostSchema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json({ success: false, error: validation.error.issues[0].message });
+  }
+  const { slug, categorySlug, title, excerpt, content, image, images = [], category, author, date, readTime, recommendedProducts = [], relatedPosts = [], isPublished } = validation.data; 
   try { 
     const existing = await sql`SELECT 1 FROM blog_posts WHERE id = ${id}`; 
     if (existing.length === 0) return res.status(404).json({ success: false, error: 'Post not found' }); 
-    const rpJson = JSON.stringify(Array.isArray(recommendedProducts) ? recommendedProducts : []); 
+    const finalImages = Array.isArray(images) && images.length > 0 ? images : [image];
+    const imagesJson = JSON.stringify(finalImages);
+    const recommendedProductsJson = JSON.stringify(recommendedProducts || []);
+    const relatedPostsJson = JSON.stringify(relatedPosts || []);
+ 
     await sql` 
       UPDATE blog_posts SET slug = ${slug}, category_slug = ${categorySlug}, title = ${title}, excerpt = ${excerpt}, 
-      content = ${content}, image = ${image}, category = ${category}, author = ${author}, date = ${date}, 
-      read_time = ${readTime}, recommended_products = ${rpJson}::jsonb, is_published = ${isPublished} 
+      content = ${content}, image = ${image}, images = ${imagesJson}::jsonb, category = ${category}, author = ${author}, date = ${date}, 
+      read_time = ${readTime}, recommended_products = ${recommendedProductsJson}::jsonb, related_posts = ${relatedPostsJson}::jsonb, is_published = ${isPublished ?? true} 
       WHERE id = ${id} 
     `; 
     const rows = await sql`SELECT * FROM blog_posts WHERE id = ${id}`; 
     res.json({ success: true, data: formatBlogPost(rows[0]) }); 
-  } catch (e: any) { res.status(500).json({ success: false, error: 'Database error' }); } 
+  } catch (e: any) { 
+    console.error('Error updating blog post:', e);
+    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
+  } 
 }); 
 
-router.delete('/admin/posts/:id', async (req, res) => { 
-  if (req.get('ADMIN_PASSWORD') !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
+router.delete('/admin/posts/:id', checkAdmin, async (req, res) => { 
   const { id } = req.params; 
   try { 
-    const result = await sql`DELETE FROM blog_posts WHERE id = ${id} RETURNING id`; 
-    if (result.length === 0) return res.status(404).json({ success: false, error: 'Post not found' }); 
+    await sql`DELETE FROM blog_posts WHERE id = ${id}`; 
     res.json({ success: true }); 
   } catch (e: any) { res.status(500).json({ success: false, error: 'Database error' }); } 
 }); 
 
-router.get('/admin/categories', async (req, res) => { 
-  if (req.get('ADMIN_PASSWORD') !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
+router.get('/admin/categories', checkAdmin, async (req, res) => { 
   try { 
-    const categories = await sql`SELECT * FROM blog_categories`; 
+    const categories = await sql`SELECT * FROM blog_categories ORDER BY title ASC`; 
     res.json({ success: true, data: categories }); 
   } catch (e: any) { res.status(500).json({ success: false, error: 'Database error' }); } 
 }); 
 
-router.post('/admin/categories', async (req, res) => { 
-  if (req.get('ADMIN_PASSWORD') !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
-  const { title, slug, image, description } = req.body; 
-  if (!title || !slug || !image || !description) { 
-    return res.status(400).json({ success: false, error: 'Missing required fields' }); 
-  } 
+router.post('/admin/categories', checkAdmin, async (req, res) => { 
+  const validation = blogCategorySchema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json({ success: false, error: validation.error.issues[0].message });
+  }
+  const { title, slug, image, description } = validation.data; 
   try { 
     const id = uuidv4(); 
-    await sql`INSERT INTO blog_categories (id, title, slug, image, description) VALUES (${id}, ${title}, ${slug}, ${image}, ${description})`; 
-    categoriesCache = null; 
+    await sql`INSERT INTO blog_categories (id, title, slug, image, description) VALUES (${id}, ${title}, ${slug}, ${image}, ${description || null})`; 
     const rows = await sql`SELECT * FROM blog_categories WHERE id = ${id}`; 
     res.status(201).json({ success: true, data: rows[0] }); 
   } catch (e: any) { 
@@ -129,31 +151,24 @@ router.post('/admin/categories', async (req, res) => {
   } 
 }); 
 
-router.put('/admin/categories/:id', async (req, res) => { 
-  if (req.get('ADMIN_PASSWORD') !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
+router.put('/admin/categories/:id', checkAdmin, async (req, res) => { 
   const { id } = req.params; 
-  const { title, slug, image, description } = req.body; 
+  const validation = blogCategorySchema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json({ success: false, error: validation.error.issues[0].message });
+  }
+  const { title, slug, image, description } = validation.data; 
   try { 
-    const existing = await sql`SELECT 1 FROM blog_categories WHERE id = ${id}`; 
-    if (existing.length === 0) return res.status(404).json({ success: false, error: 'Category not found' }); 
-    await sql`UPDATE blog_categories SET title = ${title}, slug = ${slug}, image = ${image}, description = ${description} WHERE id = ${id}`; 
-    categoriesCache = null; 
+    await sql`UPDATE blog_categories SET title = ${title}, slug = ${slug}, image = ${image}, description = ${description || null} WHERE id = ${id}`;
     const rows = await sql`SELECT * FROM blog_categories WHERE id = ${id}`; 
     res.json({ success: true, data: rows[0] }); 
   } catch (e: any) { res.status(500).json({ success: false, error: 'Database error' }); } 
 }); 
 
-router.delete('/admin/categories/:id', async (req, res) => { 
-  if (req.get('ADMIN_PASSWORD') !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
+router.delete('/admin/categories/:id', checkAdmin, async (req, res) => { 
   const { id } = req.params; 
   try { 
-    const result = await sql`DELETE FROM blog_categories WHERE id = ${id} RETURNING id`; 
-    if (result.length === 0) return res.status(404).json({ success: false, error: 'Category not found' }); 
-    categoriesCache = null; 
+    await sql`DELETE FROM blog_categories WHERE id = ${id}`; 
     res.json({ success: true }); 
   } catch (e: any) { res.status(500).json({ success: false, error: 'Database error' }); } 
 }); 
@@ -205,9 +220,18 @@ router.get('/posts/:slug', async (req, res) => {
     if (recommendedIds.length > 0) { 
       recommendedProducts = await sql`SELECT * FROM products WHERE id = ANY(${recommendedIds}::text[]) AND is_active = true`; 
     } 
-    const relatedPosts = await sql` 
-      SELECT * FROM blog_posts WHERE category_slug = ${post.category_slug} AND slug != ${slug} AND is_published = true LIMIT 3 
-    `; 
+    
+    const relatedIds: string[] = Array.isArray(post.related_posts) ? post.related_posts : [];
+    let relatedPosts: any[] = [];
+    if (relatedIds.length > 0) {
+      relatedPosts = await sql`SELECT * FROM blog_posts WHERE id = ANY(${relatedIds}::text[]) AND is_published = true`;
+    } else {
+      // Fallback to existing category-based related posts if none explicitly linked
+      relatedPosts = await sql` 
+        SELECT * FROM blog_posts WHERE category_slug = ${post.category_slug} AND slug != ${slug} AND is_published = true LIMIT 3 
+      `; 
+    }
+
     res.json({ 
       success: true, 
       data: { post: formatBlogPost(post), recommendedProducts: recommendedProducts.map(formatProduct), relatedPosts: relatedPosts.map(formatBlogPost) } 

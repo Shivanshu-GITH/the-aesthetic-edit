@@ -67,19 +67,19 @@ export default function BlogHub() {
   };
 
   return (
-    <div className="pb-32 space-y-24 bg-surface">
+    <div className="pb-32 space-y-16 md:space-y-24 bg-surface">
       <SEOMeta 
         title="The Journal — Aesthetic Inspiration & Guides"
         description="Explore curated guides on fashion, home styling, and intentional living. Pinterest-inspired content by Anjali."
         type="website"
       />
       {/* Hero Section */}
-      <header className="max-w-4xl mx-auto px-6 pt-24 text-center space-y-6 relative">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-accent-blush/20 to-transparent pointer-events-none"></div>
-        <h1 className="text-5xl md:text-7xl font-headline font-bold leading-tight text-on-surface relative z-10">
+      <header className="max-w-4xl mx-auto px-6 pt-16 md:pt-24 text-center space-y-6 relative">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-linear-to-b from-accent-blush/20 to-transparent pointer-events-none"></div>
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-headline font-bold leading-tight text-on-surface relative z-10">
           The <span className="italic font-normal text-primary">Journal</span>
         </h1>
-        <p className="font-serif italic text-xl text-on-surface-variant max-w-2xl mx-auto relative z-10">
+        <p className="font-serif italic text-lg md:text-xl text-on-surface-variant max-w-2xl mx-auto relative z-10">
           Ideas, inspiration, and curated guides to help you style your life with intention.
         </p>
       </header>
@@ -87,17 +87,17 @@ export default function BlogHub() {
       {/* Featured Post */}
       <section className="max-w-7xl mx-auto px-6">
         {postsLoading ? (
-          <div className="bg-white rounded-[40px] overflow-hidden border border-outline-variant/30 h-[500px]">
+          <div className="bg-white rounded-4xl overflow-hidden border border-outline-variant/30 h-125">
             <Skeleton className="w-full h-full" />
           </div>
         ) : featuredPost && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group relative bg-white rounded-[40px] overflow-hidden border border-outline-variant/30 shadow-sm hover:shadow-2xl transition-all duration-500"
+            className="group relative bg-white rounded-4xl overflow-hidden border border-outline-variant/30 shadow-sm hover:shadow-2xl transition-all duration-500"
           >
             <div className="grid grid-cols-1 lg:grid-cols-2">
-              <div className="aspect-[16/10] lg:aspect-auto overflow-hidden bg-surface-container">
+              <div className="aspect-video lg:aspect-auto overflow-hidden bg-surface-container">
                 <img 
                   src={featuredPost.image} 
                   alt={featuredPost.title} 
@@ -106,19 +106,19 @@ export default function BlogHub() {
                   referrerPolicy="no-referrer"
                 />
               </div>
-              <div className="p-8 lg:p-16 flex flex-col justify-center space-y-8 bg-gradient-to-br from-white to-accent-blush/10">
+              <div className="p-8 lg:p-16 flex flex-col justify-center space-y-6 md:space-y-8 bg-linear-to-br from-white to-accent-blush/10">
                 <div className="space-y-4">
-                  <span className="font-label text-xs uppercase tracking-[0.3em] text-primary font-bold">Featured Article</span>
-                  <h2 className="text-3xl md:text-5xl font-headline font-bold leading-tight text-on-surface group-hover:text-primary transition-colors">
+                  <span className="font-label text-[10px] md:text-xs uppercase tracking-[0.3em] text-primary font-bold">Featured Article</span>
+                  <h2 className="text-2xl md:text-4xl lg:text-5xl font-headline font-bold leading-tight text-on-surface group-hover:text-primary transition-colors">
                     {featuredPost.title}
                   </h2>
-                  <p className="text-lg text-on-surface-variant leading-relaxed">
+                  <p className="text-base md:text-lg text-on-surface-variant leading-relaxed line-clamp-3">
                     {featuredPost.excerpt}
                   </p>
                 </div>
                 <Link 
                   to={`/blog/${featuredPost.categorySlug}/${featuredPost.slug}`}
-                  className="inline-flex items-center gap-3 text-primary font-label text-sm uppercase tracking-widest font-bold group/link"
+                  className="inline-flex items-center gap-3 text-primary font-label text-xs md:text-sm uppercase tracking-widest font-bold group/link w-fit"
                 >
                   Read Article
                   <ArrowRight size={18} className="transition-transform group-hover/link:translate-x-2" />
@@ -130,15 +130,15 @@ export default function BlogHub() {
       </section>
 
       {/* Explore by Category */}
-      <section className="max-w-7xl mx-auto px-6 space-y-12">
+      <section className="max-w-7xl mx-auto px-6 space-y-10 md:space-y-12">
         <div className="text-center space-y-4">
-          <h2 className="text-3xl font-headline font-bold text-on-surface">Explore by Category</h2>
-          <div className="w-16 h-0.5 bg-accent-peach mx-auto"></div>
+          <h2 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">Explore by Category</h2>
+          <div className="w-12 md:w-16 h-0.5 bg-accent-peach mx-auto"></div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
           {catLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="aspect-[4/5] rounded-[32px] overflow-hidden">
+              <div key={i} className="aspect-4/5 rounded-4xl overflow-hidden">
                 <Skeleton className="w-full h-full" />
               </div>
             ))
@@ -152,7 +152,7 @@ export default function BlogHub() {
                 whileHover={{ scale: 1.03 }}
                 className="transition-transform duration-300"
               >
-                <Link to={`/blog/${category.slug}`} className="group block relative aspect-[4/5] rounded-[32px] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 bg-surface-container">
+                <Link to={`/blog/${category.slug}`} className="group block relative aspect-4/5 rounded-4xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 bg-surface-container">
                   <img 
                     src={category.image} 
                     alt={category.title} 
@@ -160,9 +160,9 @@ export default function BlogHub() {
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-on-surface/80 via-on-surface/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
-                  <div className="absolute bottom-6 left-6 right-6 text-white text-center">
-                    <h3 className="text-xl font-headline font-bold leading-tight">{category.title}</h3>
+                  <div className="absolute inset-0 bg-linear-to-t from-on-surface/80 via-on-surface/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+                  <div className="absolute bottom-4 md:bottom-6 left-4 md:left-6 right-4 md:right-6 text-white text-center">
+                    <h3 className="text-lg md:text-xl font-headline font-bold leading-tight">{category.title}</h3>
                   </div>
                 </Link>
               </motion.div>
@@ -172,16 +172,16 @@ export default function BlogHub() {
       </section>
 
       {/* Blog Grid Section */}
-      <section className="max-w-7xl mx-auto px-6 space-y-12">
+      <section className="max-w-7xl mx-auto px-6 space-y-10 md:space-y-12">
         {/* Search */}
-        <div className="flex justify-center border-b border-outline-variant/30 pb-12">
+        <div className="flex justify-center border-b border-outline-variant/30 pb-10 md:pb-12">
           <div className="relative w-full max-w-xl">
             <input 
               type="text" 
               placeholder="Search articles..."
               value={searchQuery}
               onChange={(e) => updateSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-outline-variant/30 focus:outline-none focus:border-primary transition-all font-body text-sm shadow-sm"
+              className="w-full pl-12 pr-4 py-3.5 md:py-4 rounded-2xl bg-white border border-outline-variant/30 focus:outline-none focus:border-primary transition-all font-body text-sm shadow-sm"
             />
             <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-outline" />
           </div>
@@ -191,16 +191,16 @@ export default function BlogHub() {
         {postsLoading ? (
           <BlogPostCardGridSkeleton count={6} />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
             {filteredPosts.map((post, index) => (
               <motion.article
                 key={post.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="group space-y-6 bg-white p-4 rounded-[32px] border border-outline-variant/30 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
+                className="group space-y-6 bg-white p-4 rounded-4xl border border-outline-variant/30 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
               >
-                <Link to={`/blog/${post.categorySlug}/${post.slug}`} className="block relative aspect-[4/5] rounded-[24px] overflow-hidden shadow-sm bg-surface-container">
+                <Link to={`/blog/${post.categorySlug}/${post.slug}`} className="block relative aspect-4/5 rounded-3xl overflow-hidden shadow-sm bg-surface-container">
                   <img 
                     src={post.image} 
                     alt={post.title} 
@@ -208,27 +208,27 @@ export default function BlogHub() {
                     className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="absolute top-6 left-6">
-                    <span className="bg-accent-blush/90 backdrop-blur-sm px-4 py-1.5 rounded-full font-label text-[9px] uppercase tracking-widest font-bold text-primary">
+                  <div className="absolute top-4 md:top-6 left-4 md:left-6">
+                    <span className="bg-accent-blush/90 backdrop-blur-sm px-3 md:px-4 py-1 md:py-1.5 rounded-full font-label text-[8px] md:text-[9px] uppercase tracking-widest font-bold text-primary">
                       {post.category}
                     </span>
                   </div>
                 </Link>
                 <div className="space-y-4 px-2">
-                  <div className="flex items-center gap-4 text-[10px] font-label uppercase tracking-widest text-outline">
+                  <div className="flex items-center gap-3 md:gap-4 text-[9px] md:text-[10px] font-label uppercase tracking-widest text-outline">
                     <span>{post.date}</span>
                     <span className="w-1 h-1 rounded-full bg-outline/30"></span>
                     <span>{post.readTime}</span>
                   </div>
-                  <h3 className="text-2xl font-headline font-bold leading-tight text-on-surface group-hover:text-primary transition-colors">
+                  <h3 className="text-xl md:text-2xl font-headline font-bold leading-tight text-on-surface group-hover:text-primary transition-colors line-clamp-2">
                     <Link to={`/blog/${post.categorySlug}/${post.slug}`}>{post.title}</Link>
                   </h3>
-                  <p className="text-on-surface-variant leading-relaxed line-clamp-2">
+                  <p className="text-sm md:text-base text-on-surface-variant leading-relaxed line-clamp-2">
                     {post.excerpt}
                   </p>
                   <Link 
                     to={`/blog/${post.categorySlug}/${post.slug}`}
-                    className="inline-flex items-center gap-2 text-primary font-label text-[10px] uppercase tracking-widest font-bold group/more"
+                    className="inline-flex items-center gap-2 text-primary font-label text-[9px] md:text-[10px] uppercase tracking-widest font-bold group/more"
                   >
                     Read More
                     <ArrowRight size={14} className="transition-transform group-hover/more:translate-x-1" />
@@ -247,9 +247,9 @@ export default function BlogHub() {
       </section>
 
       {/* Email CTA */}
-      <section className="w-full py-24 bg-gradient-to-b from-surface to-accent-blush/20">
+      <section className="w-full py-24 bg-linear-to-b from-surface to-accent-blush/20">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="rounded-[48px] p-12 md:p-24 text-center space-y-10 relative overflow-hidden shadow-2xl border border-outline-variant/30 bg-gradient-to-br from-surface-container to-accent-blush/30">
+          <div className="rounded-[48px] p-12 md:p-24 text-center space-y-10 relative overflow-hidden shadow-2xl border border-outline-variant/30 bg-linear-to-br from-surface-container to-accent-blush/30">
             {/* Subtle decorative elements */}
             <div className="absolute inset-0 opacity-30 pointer-events-none">
               <div className="absolute -top-24 -left-24 w-96 h-96 bg-white/40 blur-[100px] rounded-full"></div>

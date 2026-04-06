@@ -3,6 +3,7 @@ export interface Product {
   title: string;
   price: number;
   image: string;
+  images: string[];
   category: string;
   subCategory: string;
   vibe: string[];
@@ -20,6 +21,7 @@ export interface BlogPost {
   excerpt: string;
   content: string;
   image: string;
+  images: string[];
   category: string;
   author: string;
   date: string;

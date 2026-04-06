@@ -1,14 +1,6 @@
 import { Router } from 'express'; 
 import sql from '../db.js'; 
-import { rateLimit } from 'express-rate-limit'; 
-
-const adminLimit = rateLimit({ 
-  windowMs: 15 * 60 * 1000, 
-  max: 1000, 
-  message: { success: false, error: 'Too many requests, please try again later' }, 
-  standardHeaders: true, 
-  legacyHeaders: false, 
-}); 
+import { adminLimit, checkAdmin } from '../middleware/admin.js'; 
 
 const router = Router(); 
 router.use(adminLimit); 
@@ -20,10 +12,7 @@ const formatProduct = (p: any) => ({
   isActive: p.is_active === true || p.is_active === 1 
 }); 
 
-router.get('/summary', async (req, res) => { 
-  if (req.get('ADMIN_PASSWORD') !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
+router.get('/summary', checkAdmin, async (req, res) => { 
   try { 
     const [leadsRows, clicksRows, savesRows] = await Promise.all([ 
       sql`SELECT COUNT(*) as count FROM leads`, 

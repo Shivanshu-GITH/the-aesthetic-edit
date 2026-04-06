@@ -242,14 +242,15 @@ async function seed() {
  
   console.log('Seeding blog posts...'); 
   for (const post of blogPosts) { 
+    const relatedPosts = post.id === 'b1' ? ['b2', 'b3'] : (post.id === 'b2' ? ['b1', 'b4'] : []);
     await sql` 
-      INSERT INTO blog_posts (id, slug, category_slug, title, excerpt, content, image, category, author, date, read_time, recommended_products, is_published) 
+      INSERT INTO blog_posts (id, slug, category_slug, title, excerpt, content, image, category, author, date, read_time, recommended_products, related_posts, is_published) 
       VALUES ( 
         ${post.id}, ${post.slug}, ${post.category_slug}, ${post.title}, ${post.excerpt}, 
         ${post.content}, ${post.image}, ${post.category}, ${post.author}, ${post.date}, 
-        ${post.read_time}, ${JSON.stringify(post.recommended_products || [])}::jsonb, true 
+        ${post.read_time}, ${JSON.stringify(post.recommended_products || [])}::jsonb, ${JSON.stringify(relatedPosts)}::jsonb, true 
       ) 
-      ON CONFLICT (id) DO NOTHING 
+      ON CONFLICT (id) DO UPDATE SET related_posts = EXCLUDED.related_posts;
     `; 
   } 
  

@@ -45,9 +45,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, index = 0, showPinte
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="group bg-white rounded-[32px] overflow-hidden border border-outline-variant/30 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
+      className="group bg-white rounded-4xl overflow-hidden border border-outline-variant/30 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
     >
-      <div className="aspect-[4/5] relative overflow-hidden bg-surface-container">
+      <div className="aspect-4/5 relative overflow-hidden bg-surface-container">
         <Link to={`/shop/product/${product.id}`}>
           <img 
             src={product.image} 
@@ -60,16 +60,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, index = 0, showPinte
         
         {showPinterestSave && (
           <>
-            <div className="absolute top-4 right-16 z-10">
+            <div className="absolute top-3 md:top-4 right-12 md:right-16 z-10">
               <WishlistButton variant="card" productId={product.id} />
             </div>
-            <div className="absolute top-4 right-4 z-10">
+            <div className="absolute top-3 md:top-4 right-3 md:right-4 z-10">
               <PinterestSaveButton variant="card" product={product} />
             </div>
           </>
         )}
 
-        <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity items-center justify-center pointer-events-none hidden md:flex">
           <Link 
             to={`/shop/product/${product.id}`}
             className="bg-primary text-on-primary px-8 py-3 rounded-full font-label text-[10px] uppercase tracking-widest font-bold hover:bg-primary-hover transition-all transform translate-y-4 group-hover:translate-y-0 pointer-events-auto shadow-lg"
@@ -78,17 +78,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, index = 0, showPinte
           </Link>
         </div>
       </div>
-      <div className="p-8 space-y-4">
+      <div className="p-5 md:p-8 space-y-3 md:space-y-4">
         <div className="space-y-1">
-          <span className="font-label text-[9px] uppercase tracking-widest text-primary font-bold">{product.category}</span>
+          <span className="font-label text-[8px] md:text-[9px] uppercase tracking-widest text-primary font-bold">{product.category}</span>
           <Link to={`/shop/product/${product.id}`}>
-            <h3 className="font-headline font-bold text-xl text-on-surface group-hover:text-primary transition-colors">{product.title}</h3>
+            <h3 className="font-headline font-bold text-lg md:text-xl text-on-surface group-hover:text-primary transition-colors line-clamp-1 md:line-clamp-2">{product.title}</h3>
           </Link>
         </div>
-        <div className="flex items-center justify-between pt-4 border-t border-outline-variant/30">
+        <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-outline-variant/30">
           <div className="flex flex-col">
-            <span className="text-lg font-bold text-on-surface">{displayPrice}</span>
-            <span className="text-[10px] text-on-surface-variant/50 font-label uppercase tracking-widest"> 
+            <span className="text-base md:text-lg font-bold text-on-surface">{displayPrice}</span>
+            <span className="text-[8px] md:text-[10px] text-on-surface-variant/50 font-label uppercase tracking-widest"> 
               {getUserCurrencySync()} 
             </span> 
           </div>

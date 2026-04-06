@@ -3,6 +3,7 @@ import { z } from 'zod';
 import sql from '../db.js'; 
 import { rateLimit } from 'express-rate-limit'; 
 import { v4 as uuidv4 } from 'uuid'; 
+import { checkAdmin } from '../middleware/admin.js';
  
 const router = Router(); 
  
@@ -42,10 +43,7 @@ router.post('/', leadLimit, async (req, res) => {
   } 
 }); 
  
-router.get('/admin/all', async (req, res) => { 
-  if (req.get('ADMIN_PASSWORD') !== process.env.ADMIN_PASSWORD) { 
-    return res.status(401).json({ success: false, error: 'Unauthorized' }); 
-  } 
+router.get('/admin/all', checkAdmin, async (req, res) => { 
   try { 
     const leads = await sql`SELECT * FROM leads ORDER BY created_at DESC`; 
     res.json({ success: true, data: leads }); 

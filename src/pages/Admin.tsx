@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, ExternalLink, MessageCircle, ArrowRight, Save, ShieldCheck, ShoppingBag, Eye, EyeOff, RefreshCw, LayoutDashboard, FileText, FolderTree, Users, LogOut, Pencil, Trash2, X, Plus, Check } from 'lucide-react';
+import { Mail, ExternalLink, MessageCircle, ArrowRight, Save, ShieldCheck, ShoppingBag, Eye, EyeOff, RefreshCw, LayoutDashboard, FileText, FolderTree, Users, LogOut, Pencil, Trash2, X, Plus, Check, Settings } from 'lucide-react';
 import { formatPrice } from '../lib/currency';
 import { Product } from '../types';
 import { useToast } from '../context/ToastContext';
+import ImageUpload from '../components/ImageUpload';
+import MultiImageUpload from '../components/MultiImageUpload';
 import { PRODUCT_CATEGORIES as CATEGORIES, SUB_CATEGORIES, VIBES } from '../lib/constants';
 import { clearFetchCache } from '../hooks/useFetch';
 
@@ -17,7 +19,7 @@ interface AnalyticsData {
   allProducts: Product[];
 }
 
-type TabType = 'analytics' | 'products' | 'blogs' | 'categories' | 'leads';
+type TabType = 'analytics' | 'products' | 'blogs' | 'categories' | 'shop-categories' | 'home-config' | 'site-config' | 'leads';
 
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -33,6 +35,10 @@ export default function Admin() {
   const [allBlogPosts, setAllBlogPosts] = useState<any[]>([]);
   const [blogCategories, setBlogCategories] = useState<any[]>([]);
   const [allLeads, setAllLeads] = useState<any[]>([]);
+  const [shopCategories, setShopCategories] = useState<any[]>([]);
+  const [moods, setMoods] = useState<any[]>([]);
+  const [findHereItems, setFindHereItems] = useState<any[]>([]);
+  const [siteConfigs, setSiteConfigs] = useState<Record<string, string>>({});
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -62,17 +68,87 @@ export default function Admin() {
 
   // Blog Post Form State
   const [isBlogModalOpen, setIsBlogModalOpen] = useState(false);
-  const [editingBlog, setEditingBlog] = useState<any>(null);
+  const initialBlogState = {
+    title: '',
+    slug: '',
+    category: '',
+    categorySlug: '',
+    excerpt: '',
+    content: '',
+    image: '',
+    images: [],
+    author: '',
+    date: new Date().toISOString().split('T')[0],
+    readTime: '',
+    recommendedProducts: [],
+    relatedPosts: [],
+    isPublished: true
+  };
+  const [editingBlog, setEditingBlog] = useState<any>(initialBlogState);
   const [blogFormErrors, setBlogFormErrors] = useState<Record<string, string>>({});
   const [isSlugManual, setIsSlugManual] = useState(false);
   const [confirmDeleteBlogId, setConfirmDeleteBlogId] = useState<string | null>(null);
 
+  // Helper to format date for input (Readable -> YYYY-MM-DD)
+  const formatDateForInput = (dateStr: any) => {
+    if (!dateStr) return new Date().toISOString().split('T')[0];
+    if (typeof dateStr !== 'string') return new Date().toISOString().split('T')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return new Date().toISOString().split('T')[0];
+      return date.toISOString().split('T')[0];
+    } catch (e) {
+      return new Date().toISOString().split('T')[0];
+    }
+  };
+
+  // Helper to format date for display (YYYY-MM-DD -> Readable)
+  const formatDateForDisplay = (dateStr: string) => {
+    if (!dateStr) return '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   // Blog Category Form State
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [editingCategory, setEditingCategory] = useState<any>({
+    title: '', slug: '', image: '', description: ''
+  });
   const [categoryFormErrors, setCategoryFormErrors] = useState<Record<string, string>>({});
   const [isCategorySlugManual, setIsCategorySlugManual] = useState(false);
   const [confirmDeleteCategoryId, setConfirmDeleteCategoryId] = useState<string | null>(null);
+
+  // Shop Category Form State
+  const [isShopCategoryModalOpen, setIsShopCategoryModalOpen] = useState(false);
+  const [editingShopCategory, setEditingShopCategory] = useState<any>({
+    title: '', icon: '', sub_categories: []
+  });
+  const [shopCategoryFormErrors, setShopCategoryFormErrors] = useState<Record<string, string>>({});
+  const [confirmDeleteShopCategoryId, setConfirmDeleteShopCategoryId] = useState<string | null>(null);
+
+  // Home Mood Form State
+  const [isMoodModalOpen, setIsMoodModalOpen] = useState(false);
+  const [editingMood, setEditingMood] = useState<any>({
+    name: '', slug: '', vibe: '', image: '', count: '', linked_shop_category_id: ''
+  });
+  const [moodFormErrors, setMoodFormErrors] = useState<Record<string, string>>({});
+  const [confirmDeleteMoodId, setConfirmDeleteMoodId] = useState<string | null>(null);
+
+  // Home Find Here Form State
+  const [isFindHereModalOpen, setIsFindHereModalOpen] = useState(false);
+  const [editingFindHere, setEditingFindHere] = useState<any>({
+    title: '', description: '', image: '', linked_blog_category_slug: ''
+  });
+  const [findHereFormErrors, setFindHereFormErrors] = useState<Record<string, string>>({});
+  const [confirmDeleteFindHereId, setConfirmDeleteFindHereId] = useState<string | null>(null);
+
+  const [customVibe, setCustomVibe] = useState('');
 
   useEffect(() => {
     if (confirmDeleteId) {
@@ -94,6 +170,27 @@ export default function Admin() {
       return () => clearTimeout(timer);
     }
   }, [confirmDeleteCategoryId]);
+
+  useEffect(() => {
+    if (confirmDeleteShopCategoryId) {
+      const timer = setTimeout(() => setConfirmDeleteShopCategoryId(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [confirmDeleteShopCategoryId]);
+
+  useEffect(() => {
+    if (confirmDeleteMoodId) {
+      const timer = setTimeout(() => setConfirmDeleteMoodId(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [confirmDeleteMoodId]);
+
+  useEffect(() => {
+    if (confirmDeleteFindHereId) {
+      const timer = setTimeout(() => setConfirmDeleteFindHereId(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [confirmDeleteFindHereId]);
 
   const adminFetch = useCallback(async (url: string, options: RequestInit = {}) => {
     const pwd = sessionStorage.getItem('ae_admin_auth');
@@ -160,39 +257,126 @@ export default function Admin() {
     }
   };
 
+  const refreshShopCategories = async () => {
+    const pwd = sessionStorage.getItem('ae_admin_auth');
+    if (!pwd) return;
+    try {
+      const res = await fetch('/api/home-shop/admin/shop-categories', { headers: { 'ADMIN_PASSWORD': pwd } });
+      if (res.ok) {
+        const data = await res.json();
+        setShopCategories(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to refresh shop categories', err);
+    }
+  };
+
+  const refreshMoods = async () => {
+    const pwd = sessionStorage.getItem('ae_admin_auth');
+    if (!pwd) return;
+    try {
+      const res = await fetch('/api/home-shop/admin/moods', { headers: { 'ADMIN_PASSWORD': pwd } });
+      if (res.ok) {
+        const data = await res.json();
+        setMoods(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to refresh moods', err);
+    }
+  };
+
+  const refreshFindHere = async () => {
+    const pwd = sessionStorage.getItem('ae_admin_auth');
+    if (!pwd) return;
+    try {
+      const res = await fetch('/api/home-shop/admin/find-here', { headers: { 'ADMIN_PASSWORD': pwd } });
+      if (res.ok) {
+        const data = await res.json();
+        setFindHereItems(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to refresh find-here items', err);
+    }
+  };
+
+  const refreshSiteConfig = async () => {
+    try {
+      const res = await fetch('/api/home-shop/config');
+      if (res.ok) {
+        const data = await res.json();
+        setSiteConfigs(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to refresh site config', err);
+    }
+  };
+
+  const handleSaveSiteConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const res = await adminFetch('/api/home-shop/admin/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(siteConfigs)
+      });
+      if (res.ok) {
+        showToast('Site configuration updated', 'success');
+      } else {
+        showToast('Failed to update site configuration', 'error');
+      }
+    } catch (err) {
+      showToast('Failed to update site configuration', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const fetchDashboard = async (pwd: string) => {
     setIsLoading(true);
     setError(''); // Clear previous error
     try {
       const headers = { 'ADMIN_PASSWORD': pwd };
-      const [analyticsRes, productsRes, blogPostsRes, blogCategoriesRes, leadsRes] = await Promise.all([
+      const [analyticsRes, productsRes, blogPostsRes, blogCategoriesRes, leadsRes, shopCategoriesRes, moodsRes, findHereRes, configRes] = await Promise.all([
         fetch('/api/analytics/summary', { headers }),
         fetch('/api/products/admin/all', { headers }),
         fetch('/api/blog/admin/posts', { headers }),
         fetch('/api/blog/admin/categories', { headers }),
-        fetch('/api/leads/admin/all', { headers })
+        fetch('/api/leads/admin/all', { headers }),
+        fetch('/api/home-shop/admin/shop-categories', { headers }),
+        fetch('/api/home-shop/admin/moods', { headers }),
+        fetch('/api/home-shop/admin/find-here', { headers }),
+        fetch('/api/home-shop/config')
       ]);
 
-      if (analyticsRes.ok && productsRes.ok && blogPostsRes.ok && blogCategoriesRes.ok && leadsRes.ok) {
-        const [analyticsData, productsData, blogPostsData, blogCategoriesData, leadsData] = await Promise.all([
-          analyticsRes.json(),
-          productsRes.json(),
-          blogPostsRes.json(),
-          blogCategoriesRes.json(),
-          leadsRes.json()
+      if (analyticsRes.ok && productsRes.ok && blogPostsRes.ok && blogCategoriesRes.ok && leadsRes.ok && shopCategoriesRes.ok && moodsRes.ok && findHereRes.ok && configRes.ok) {
+        const [analyticsData, productsData, blogPostsData, blogCategoriesData, leadsData, shopCategoriesData, moodsData, findHereData, configData] = await Promise.all([
+          analyticsRes.json().catch(() => ({ data: null })),
+          productsRes.json().catch(() => ({ data: [] })),
+          blogPostsRes.json().catch(() => ({ data: [] })),
+          blogCategoriesRes.json().catch(() => ({ data: [] })),
+          leadsRes.json().catch(() => ({ data: [] })),
+          shopCategoriesRes.json().catch(() => ({ data: [] })),
+          moodsRes.json().catch(() => ({ data: [] })),
+          findHereRes.json().catch(() => ({ data: [] })),
+          configRes.json().catch(() => ({ data: {} }))
         ]);
 
         setData(analyticsData.data);
-        setAllProducts(productsData.data);
-        setAllBlogPosts(blogPostsData.data);
-        setBlogCategories(blogCategoriesData.data);
-        setAllLeads(leadsData.data);
+        setAllProducts(productsData.data || []);
+        setAllBlogPosts(blogPostsData.data || []);
+        setBlogCategories(blogCategoriesData.data || []);
+        setAllLeads(leadsData.data || []);
+        setShopCategories(shopCategoriesData.data || []);
+        setMoods(moodsData.data || []);
+        setFindHereItems(findHereData.data || []);
+        setSiteConfigs(configData.data || {});
         
         setIsAuthenticated(true);
         sessionStorage.setItem('ae_admin_auth', pwd);
       } else {
         // Try to get error from any of the failed responses
-        const failedRes = [analyticsRes, productsRes, blogPostsRes, blogCategoriesRes, leadsRes].find(r => !r.ok);
+        const failedRes = [analyticsRes, productsRes, blogPostsRes, blogCategoriesRes, leadsRes, shopCategoriesRes, moodsRes, findHereRes].find(r => !r.ok);
         const errorData = await failedRes?.json().catch(() => ({}));
         setError(errorData?.error || 'Unauthorized: Invalid password');
         sessionStorage.removeItem('ae_admin_auth');
@@ -209,7 +393,6 @@ export default function Admin() {
   useEffect(() => {
     const auth = sessionStorage.getItem('ae_admin_auth');
     if (auth) {
-      setIsAuthenticated(true);
       fetchDashboard(auth);
     }
   }, []);
@@ -359,10 +542,19 @@ export default function Admin() {
       const url = isEdit ? `/api/blog/admin/posts/${editingBlog.id}` : '/api/blog/admin/posts';
       const method = isEdit ? 'PUT' : 'POST';
 
+      const dataToSave = {
+        ...editingBlog,
+        date: formatDateForDisplay(editingBlog.date),
+        images: Array.isArray(editingBlog.images) ? editingBlog.images : (editingBlog.image ? [editingBlog.image] : []),
+        recommendedProducts: Array.isArray(editingBlog.recommendedProducts) ? editingBlog.recommendedProducts : [],
+        relatedPosts: Array.isArray(editingBlog.relatedPosts) ? editingBlog.relatedPosts : [],
+        isPublished: editingBlog.isPublished ?? true
+      };
+
       const res = await adminFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingBlog)
+        body: JSON.stringify(dataToSave)
       });
 
       if (res.ok) {
@@ -475,6 +667,127 @@ export default function Admin() {
     }
   };
 
+  const handleSaveShopCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingShopCategory) return;
+    const errors: Record<string, string> = {};
+    if (!editingShopCategory.title) errors.title = 'Title is required';
+    if (!editingShopCategory.slug) errors.slug = 'Slug is required';
+    if (Object.keys(errors).length > 0) { setShopCategoryFormErrors(errors); return; }
+    setIsLoading(true);
+    try {
+      const isEdit = !!editingShopCategory.id;
+      const url = isEdit ? `/api/home-shop/admin/shop-categories/${editingShopCategory.id}` : '/api/home-shop/admin/shop-categories';
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await adminFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingShopCategory)
+      });
+      if (res.ok) {
+        setIsShopCategoryModalOpen(false);
+        setEditingShopCategory(null);
+        showToast(`Shop category ${isEdit ? 'updated' : 'created'} successfully`, 'success');
+        refreshShopCategories();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to save shop category', 'error');
+      }
+    } catch (err) { showToast('Failed to save shop category', 'error'); } finally { setIsLoading(false); }
+  };
+
+  const handleDeleteShopCategory = async (id: string) => {
+    setIsLoading(true);
+    try {
+      const res = await adminFetch(`/api/home-shop/admin/shop-categories/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('Shop category deleted', 'success');
+        refreshShopCategories();
+      }
+    } catch (err) { showToast('Failed to delete shop category', 'error'); } finally { setIsLoading(false); }
+  };
+
+  const handleSaveMood = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMood) return;
+    const errors: Record<string, string> = {};
+    if (!editingMood.name) errors.name = 'Name is required';
+    if (!editingMood.slug) errors.slug = 'Slug is required';
+    if (!editingMood.image) errors.image = 'Image is required';
+    if (Object.keys(errors).length > 0) { setMoodFormErrors(errors); return; }
+    setIsLoading(true);
+    try {
+      const isEdit = !!editingMood.id;
+      const url = isEdit ? `/api/home-shop/admin/moods/${editingMood.id}` : '/api/home-shop/admin/moods';
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await adminFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingMood)
+      });
+      if (res.ok) {
+        setIsMoodModalOpen(false);
+        setEditingMood(null);
+        showToast(`Mood ${isEdit ? 'updated' : 'created'} successfully`, 'success');
+        refreshMoods();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to save mood', 'error');
+      }
+    } catch (err) { showToast('Failed to save mood', 'error'); } finally { setIsLoading(false); }
+  };
+
+  const handleDeleteMood = async (id: string) => {
+    setIsLoading(true);
+    try {
+      const res = await adminFetch(`/api/home-shop/admin/moods/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('Mood deleted', 'success');
+        refreshMoods();
+      }
+    } catch (err) { showToast('Failed to delete mood', 'error'); } finally { setIsLoading(false); }
+  };
+
+  const handleSaveFindHere = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFindHere) return;
+    const errors: Record<string, string> = {};
+    if (!editingFindHere.title) errors.title = 'Title is required';
+    if (!editingFindHere.image) errors.image = 'Image is required';
+    if (Object.keys(errors).length > 0) { setFindHereFormErrors(errors); return; }
+    setIsLoading(true);
+    try {
+      const isEdit = !!editingFindHere.id;
+      const url = isEdit ? `/api/home-shop/admin/find-here/${editingFindHere.id}` : '/api/home-shop/admin/find-here';
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await adminFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingFindHere)
+      });
+      if (res.ok) {
+        setIsFindHereModalOpen(false);
+        setEditingFindHere(null);
+        showToast(`Item ${isEdit ? 'updated' : 'created'} successfully`, 'success');
+        refreshFindHere();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to save item', 'error');
+      }
+    } catch (err) { showToast('Failed to save item', 'error'); } finally { setIsLoading(false); }
+  };
+
+  const handleDeleteFindHere = async (id: string) => {
+    setIsLoading(true);
+    try {
+      const res = await adminFetch(`/api/home-shop/admin/find-here/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('Item deleted', 'success');
+        refreshFindHere();
+      }
+    } catch (err) { showToast('Failed to delete item', 'error'); } finally { setIsLoading(false); }
+  };
+
   const handleToggleBlogPublished = async (id: string) => {
     setUpdatingId(id);
     try {
@@ -553,6 +866,9 @@ export default function Admin() {
     { id: 'products', label: 'Products', icon: ShoppingBag },
     { id: 'blogs', label: 'Blog Posts', icon: FileText },
     { id: 'categories', label: 'Blog Categories', icon: FolderTree },
+    { id: 'shop-categories', label: 'Shop Categories', icon: FolderTree },
+    { id: 'home-config', label: 'Home Config', icon: LayoutDashboard },
+    { id: 'site-config', label: 'Site Config', icon: Settings },
     { id: 'leads', label: 'Leads', icon: Users },
   ];
 
@@ -620,7 +936,7 @@ export default function Admin() {
                   { label: 'Affiliate Clicks', value: data.totalClicks, icon: ExternalLink, color: 'bg-green-50 text-green-600' },
                   { label: 'Pinterest Saves', value: data.totalSaves, icon: Save, color: 'bg-red-50 text-red-600' },
                 ].map((stat) => (
-                  <div key={stat.label} className="bg-white p-8 rounded-[32px] border border-outline-variant/30 shadow-sm flex items-center gap-6">
+                  <div key={stat.label} className="bg-white p-8 rounded-4xl border border-outline-variant/30 shadow-sm flex items-center gap-6">
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${stat.color}`}>
                       <stat.icon size={24} />
                     </div>
@@ -655,7 +971,7 @@ export default function Admin() {
                             <td className="px-8 py-4">
                               <div className="flex items-center gap-4">
                                 <img src={p.image} className="w-10 h-10 rounded-lg object-cover" alt="" />
-                                <span className="text-sm font-bold truncate max-w-[150px]">{p.title}</span>
+                                <span className="text-sm font-bold truncate max-w-37.5">{p.title}</span>
                               </div>
                             </td>
                             <td className="px-8 py-4 text-sm font-bold text-primary">{p.clicks}</td>
@@ -722,9 +1038,9 @@ export default function Admin() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-8">
                   {data.allProducts.slice(0, 8).map((p) => (
-                    <div key={p.id} className="p-4 rounded-[24px] border border-outline-variant/20 flex items-center justify-between gap-4">
+                    <div key={p.id} className="p-4 rounded-3xl border border-outline-variant/20 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3 min-w-0">
-                        <img src={p.image} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" alt="" />
+                        <img src={p.image} className="w-12 h-12 rounded-xl object-cover shrink-0" alt="" />
                         <div className="min-w-0">
                           <p className="text-xs font-bold truncate">{p.title}</p>
                           <p className="text-[10px] text-primary">{productPrices[p.id] || formatPrice(p.price)}</p>
@@ -789,7 +1105,7 @@ export default function Admin() {
                             <img src={p.image} className="w-10 h-10 rounded-lg object-cover" alt="" />
                           </td>
                           <td className="px-8 py-4">
-                            <span className="text-sm font-bold block truncate max-w-[200px]">{p.title}</span>
+                            <span className="text-sm font-bold block truncate max-w-50">{p.title}</span>
                           </td>
                           <td className="px-8 py-4 text-sm font-bold text-primary">{productPrices[p.id] || formatPrice(p.price)}</td>
                           <td className="px-8 py-4">
@@ -895,7 +1211,7 @@ export default function Admin() {
                             <img src={post.image} className="w-10 h-10 rounded-lg object-cover" alt="" />
                           </td>
                           <td className="px-8 py-4">
-                            <span className="text-sm font-bold block truncate max-w-[200px]">{post.title}</span>
+                            <span className="text-sm font-bold block truncate max-w-50">{post.title}</span>
                           </td>
                           <td className="px-8 py-4 text-sm text-on-surface-variant">{post.category}</td>
                           <td className="px-8 py-4 text-sm text-on-surface-variant">{post.author}</td>
@@ -975,8 +1291,8 @@ export default function Admin() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {blogCategories.map((category) => (
-                  <div key={category.id} className="bg-white p-6 rounded-[32px] border border-outline-variant/30 shadow-sm space-y-4 group">
-                    <div className="relative aspect-[5/4] overflow-hidden rounded-2xl">
+                  <div key={category.id} className="bg-white p-6 rounded-4xl border border-outline-variant/30 shadow-sm space-y-4 group">
+                    <div className="relative aspect-5/4 overflow-hidden rounded-2xl">
                       <img 
                         src={category.image} 
                         alt={category.title}
@@ -1030,6 +1346,491 @@ export default function Admin() {
                     </p>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'shop-categories' && (
+            <div className="space-y-8">
+              <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-headline font-bold">Shop Sidebar Categories</h2>
+                <button 
+                  onClick={() => {
+                    setEditingShopCategory({ sub_categories: [] });
+                    setShopCategoryFormErrors({});
+                    setIsShopCategoryModalOpen(true);
+                  }}
+                  className="bg-primary text-white px-6 py-3 rounded-2xl font-label text-xs uppercase tracking-widest font-bold flex items-center gap-2 hover:bg-primary-hover transition-all"
+                >
+                  <Plus size={18} /> New Category
+                </button>
+              </div>
+
+              <div className="bg-white rounded-[40px] border border-outline-variant/30 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-surface-container/30 text-[10px] uppercase tracking-widest text-outline font-bold">
+                        <th className="px-8 py-4">Title</th>
+                        <th className="px-8 py-4">Slug</th>
+                        <th className="px-8 py-4">Sub-categories</th>
+                        <th className="px-8 py-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-outline-variant/10">
+                      {shopCategories.map((cat) => (
+                        <tr key={cat.id} className="group hover:bg-surface-container/10 transition-colors">
+                          <td className="px-8 py-4 font-bold">{cat.title}</td>
+                          <td className="px-8 py-4 text-sm text-outline">{cat.slug}</td>
+                          <td className="px-8 py-4">
+                            <div className="flex flex-wrap gap-1">
+                              {cat.sub_categories?.map((sub: string) => (
+                                <span key={sub} className="bg-surface-container px-2 py-0.5 rounded text-[9px] uppercase tracking-widest font-bold text-outline">
+                                  {sub}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-8 py-4 text-right">
+                            <div className="flex justify-end gap-2">
+                              <button 
+                                onClick={() => {
+                                  setEditingShopCategory(cat);
+                                  setShopCategoryFormErrors({});
+                                  setIsShopCategoryModalOpen(true);
+                                }}
+                                className="p-2 text-outline hover:text-primary transition-colors"
+                              >
+                                <Pencil size={18} />
+                              </button>
+                              {confirmDeleteShopCategoryId === cat.id ? (
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleDeleteShopCategory(cat.id)} className="bg-red-50 text-red-600 px-3 py-1 rounded-lg text-[9px] font-bold uppercase">Confirm</button>
+                                  <button onClick={() => setConfirmDeleteShopCategoryId(null)} className="border border-outline-variant px-3 py-1 rounded-lg text-[9px] font-bold uppercase">Cancel</button>
+                                </div>
+                              ) : (
+                                <button onClick={() => setConfirmDeleteShopCategoryId(cat.id)} className="p-2 text-outline hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'home-config' && (
+            <div className="space-y-12">
+              <div className="space-y-8">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-3xl font-headline font-bold">Browse by Mood</h2>
+                  <button 
+                    onClick={() => {
+                      setEditingMood({});
+                      setMoodFormErrors({});
+                      setIsMoodModalOpen(true);
+                    }}
+                    className="bg-primary text-white px-6 py-3 rounded-2xl font-label text-xs uppercase tracking-widest font-bold flex items-center gap-2 hover:bg-primary-hover transition-all"
+                  >
+                    <Plus size={18} /> Add Mood
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {moods.map((mood) => (
+                    <div key={mood.id} className="bg-white p-6 rounded-4xl border border-outline-variant/30 shadow-sm space-y-4 group">
+                      <div className="relative aspect-4/5 overflow-hidden rounded-2xl">
+                        <img src={mood.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                        <div className="absolute top-4 right-4 bg-white/90 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest text-primary">{mood.count}</div>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-headline font-bold">{mood.name}</h3>
+                        <p className="text-xs text-outline uppercase tracking-widest">{mood.vibe}</p>
+                        {mood.linked_shop_category_id && (
+                          <div className="mt-2 text-[10px] text-primary font-bold uppercase tracking-widest">
+                            Linked: {shopCategories.find(c => c.id === mood.linked_shop_category_id)?.title}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex justify-end gap-2 pt-2 border-t border-outline-variant/10">
+                        <button 
+                          onClick={() => { setEditingMood(mood); setMoodFormErrors({}); setIsMoodModalOpen(true); }}
+                          className="p-2 text-outline hover:text-primary transition-colors"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                        {confirmDeleteMoodId === mood.id ? (
+                          <div className="flex gap-2">
+                            <button onClick={() => handleDeleteMood(mood.id)} className="bg-red-50 text-red-600 px-3 py-1 rounded-lg text-[9px] font-bold uppercase">Confirm</button>
+                            <button onClick={() => setConfirmDeleteMoodId(null)} className="border border-outline-variant px-3 py-1 rounded-lg text-[9px] font-bold uppercase">Cancel</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setConfirmDeleteMoodId(mood.id)} className="p-2 text-outline hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-8 pt-12 border-t border-outline-variant/20">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-3xl font-headline font-bold">What You'll Find Here</h2>
+                  <button 
+                    onClick={() => {
+                      setEditingFindHere({});
+                      setFindHereFormErrors({});
+                      setIsFindHereModalOpen(true);
+                    }}
+                    className="bg-primary text-white px-6 py-3 rounded-2xl font-label text-xs uppercase tracking-widest font-bold flex items-center gap-2 hover:bg-primary-hover transition-all"
+                  >
+                    <Plus size={18} /> Add Item
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {findHereItems.map((item) => (
+                    <div key={item.id} className="bg-white p-6 rounded-4xl border border-outline-variant/30 shadow-sm flex gap-6 group">
+                      <div className="w-32 h-32 shrink-0 overflow-hidden rounded-2xl">
+                        <img src={item.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <h3 className="text-lg font-headline font-bold">{item.title}</h3>
+                        <p className="text-sm text-on-surface-variant line-clamp-2">{item.description}</p>
+                        {item.linked_blog_category_slug && (
+                          <div className="text-[10px] text-primary font-bold uppercase tracking-widest">
+                            Links to blog: {item.linked_blog_category_slug}
+                          </div>
+                        )}
+                        <div className="flex justify-end gap-2 pt-2">
+                          <button 
+                            onClick={() => { setEditingFindHere(item); setFindHereFormErrors({}); setIsFindHereModalOpen(true); }}
+                            className="p-2 text-outline hover:text-primary transition-colors"
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          {confirmDeleteFindHereId === item.id ? (
+                            <div className="flex gap-2">
+                              <button onClick={() => handleDeleteFindHere(item.id)} className="bg-red-50 text-red-600 px-3 py-1 rounded-lg text-[9px] font-bold uppercase">Confirm</button>
+                              <button onClick={() => setConfirmDeleteFindHereId(null)} className="border border-outline-variant px-3 py-1 rounded-lg text-[9px] font-bold uppercase">Cancel</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setConfirmDeleteFindHereId(item.id)} className="p-2 text-outline hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'site-config' && (
+            <div className="space-y-8">
+              <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-headline font-bold">Site Configuration</h2>
+                <button 
+                  onClick={handleSaveSiteConfig}
+                  className="bg-primary text-white px-6 py-3 rounded-2xl font-label text-xs uppercase tracking-widest font-bold flex items-center gap-2 hover:bg-primary-hover transition-all"
+                >
+                  <Save size={18} /> Save Changes
+                </button>
+              </div>
+
+              <div className="bg-white rounded-[40px] border border-outline-variant/30 shadow-sm p-10">
+                <form className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Home Hero Title Line 1</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.home_hero_title_line1 || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, home_hero_title_line1: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Home Hero Title Line 2 (Italic)</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.home_hero_title_line2 || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, home_hero_title_line2: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Home Hero Subtitle</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.home_hero_subtitle || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, home_hero_subtitle: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Home Hero Description</label>
+                      <textarea 
+                        rows={3}
+                        value={siteConfigs.home_hero_description || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, home_hero_description: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm resize-none"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Mood Section Title</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.home_mood_title || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, home_mood_title: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Journal Section Title</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.home_journal_title || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, home_journal_title: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">"Find Here" Section Title</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.home_find_here_title || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, home_find_here_title: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">"Find Here" Section Subtitle</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.home_find_here_subtitle || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, home_find_here_subtitle: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+
+                    {/* About Page Config */}
+                    <div className="md:col-span-2 pt-8 border-t border-outline-variant/20">
+                      <h3 className="text-xl font-headline font-bold mb-6">About Page</h3>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">About Hero Title</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.about_hero_title || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, about_hero_title: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">About Signature Name</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.about_hero_signature || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, about_hero_signature: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">About Hero Subtitle</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.about_hero_subtitle || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, about_hero_subtitle: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">About Hero Description</label>
+                      <textarea 
+                        rows={3}
+                        value={siteConfigs.about_hero_description || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, about_hero_description: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm resize-none"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <ImageUpload 
+                        label="About Hero Image" 
+                        value={siteConfigs.about_hero_image || ''} 
+                        onChange={(val) => setSiteConfigs(prev => ({ ...prev, about_hero_image: val }))} 
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <ImageUpload 
+                        label="Home Hero Image" 
+                        value={siteConfigs.home_hero_image || ''} 
+                        onChange={(val) => setSiteConfigs(prev => ({ ...prev, home_hero_image: val }))} 
+                      />
+                    </div>
+
+                    <div className="md:col-span-2 pt-8 border-t border-outline-variant/20">
+                      <h3 className="text-xl font-headline font-bold mb-6">Newsletter Section</h3>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Newsletter Title</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.newsletter_title || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, newsletter_title: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Newsletter CTA Button</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.newsletter_cta || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, newsletter_cta: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Newsletter Subtitle</label>
+                      <textarea 
+                        rows={2}
+                        value={siteConfigs.newsletter_subtitle || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, newsletter_subtitle: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm resize-none"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Newsletter Disclaimer</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.newsletter_disclaimer || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, newsletter_disclaimer: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2 pt-8 border-t border-outline-variant/20">
+                      <h3 className="text-xl font-headline font-bold mb-6">About Page CTA</h3>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">CTA Title</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.about_cta_title || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, about_cta_title: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">CTA Button Text</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.about_cta_button || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, about_cta_button: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">CTA Subtitle</label>
+                      <textarea 
+                        rows={2}
+                        value={siteConfigs.about_cta_subtitle || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, about_cta_subtitle: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm resize-none"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2 pt-8 border-t border-outline-variant/20">
+                      <h3 className="text-xl font-headline font-bold mb-6">Shop Page Extras</h3>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Sidebar Title</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.shop_sidebar_title || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, shop_sidebar_title: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Empty Results Message</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.shop_empty_message || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, shop_empty_message: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2 pt-8 border-t border-outline-variant/20">
+                      <h3 className="text-xl font-headline font-bold mb-6">Footer</h3>
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Footer About Text</label>
+                      <textarea 
+                        rows={3}
+                        value={siteConfigs.footer_about || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, footer_about: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm resize-none"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Footer Copyright Text</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.footer_copyright || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, footer_copyright: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2 pt-8 border-t border-outline-variant/20">
+                      <h3 className="text-xl font-headline font-bold mb-6">Product Options</h3>
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Preset Vibes (Comma separated)</label>
+                      <textarea 
+                        rows={3}
+                        value={siteConfigs.vibes_preset || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, vibes_preset: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm resize-none"
+                        placeholder="Minimal, Cozy, Pinteresty, etc."
+                      />
+                    </div>
+
+                    <div className="md:col-span-2 pt-8 border-t border-outline-variant/20">
+                      <h3 className="text-xl font-headline font-bold mb-6">Shop Page</h3>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Shop Hero Title Line 1</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.shop_hero_title_line1 || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, shop_hero_title_line1: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Shop Hero Title Line 2 (Italic)</label>
+                      <input 
+                        type="text" 
+                        value={siteConfigs.shop_hero_title_line2 || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, shop_hero_title_line2: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Shop Hero Subtitle</label>
+                      <textarea 
+                        rows={3}
+                        value={siteConfigs.shop_hero_subtitle || ''} 
+                        onChange={(e) => setSiteConfigs(prev => ({ ...prev, shop_hero_subtitle: e.target.value }))}
+                        className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm resize-none"
+                      />
+                    </div>
+                  </div>
+                </form>
               </div>
             </div>
           )}
@@ -1142,15 +1943,16 @@ export default function Admin() {
                     {formErrors.price && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{formErrors.price}</p>}
                   </div>
 
-                  {/* Image URL */}
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Image URL</label>
-                    <input 
-                      type="text"
-                      value={editingProduct?.image || ''}
-                      onChange={(e) => setEditingProduct(prev => ({ ...prev, image: e.target.value }))}
-                      placeholder="https://images.unsplash.com/..."
-                      className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-sm"
+                  {/* Images */}
+                  <div className="md:col-span-2 space-y-2">
+                    <MultiImageUpload 
+                      label="Product Images (First will be main cover)" 
+                      value={editingProduct?.images || (editingProduct?.image ? [editingProduct.image] : [])} 
+                      onChange={(urls) => setEditingProduct(prev => ({ 
+                        ...prev, 
+                        images: urls,
+                        image: urls[0] || '' 
+                      }))} 
                     />
                     {formErrors.image && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{formErrors.image}</p>}
                   </div>
@@ -1164,7 +1966,7 @@ export default function Admin() {
                       className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-sm appearance-none"
                     >
                       <option value="">Select Category</option>
-                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      {shopCategories.map(c => <option key={c.id} value={c.title}>{c.title}</option>)}
                     </select>
                     {formErrors.category && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{formErrors.category}</p>}
                   </div>
@@ -1179,7 +1981,7 @@ export default function Admin() {
                       className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-sm appearance-none disabled:opacity-50"
                     >
                       <option value="">Select Sub-Category</option>
-                      {editingProduct?.category && SUB_CATEGORIES[editingProduct.category]?.map(s => (
+                      {shopCategories.find(c => c.title === editingProduct?.category)?.sub_categories?.map((s: string) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
@@ -1190,7 +1992,7 @@ export default function Admin() {
                   <div className="space-y-3 md:col-span-2">
                     <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Vibes</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                      {VIBES.map(vibe => {
+                      {(siteConfigs.vibes_preset || VIBES.join(', ')).split(',').map(v => v.trim()).filter(Boolean).map(vibe => {
                         const isSelected = editingProduct?.vibe?.includes(vibe);
                         return (
                           <button
@@ -1205,7 +2007,7 @@ export default function Admin() {
                             }}
                             className={`px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${
                               isSelected 
-                                ? 'bg-primary border-primary text-white' 
+                                ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' 
                                 : 'bg-surface-container border-outline-variant/30 text-outline hover:border-primary'
                             }`}
                           >
@@ -1213,6 +2015,58 @@ export default function Admin() {
                           </button>
                         );
                       })}
+                    </div>
+                    {/* Add Custom Vibe */}
+                    <div className="flex gap-2 mt-4">
+                      <div className="relative flex-1">
+                        <input 
+                          type="text"
+                          value={customVibe}
+                          onChange={(e) => setCustomVibe(e.target.value)}
+                          placeholder="Add custom vibe..."
+                          className="px-4 py-2.5 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-xs"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (customVibe.trim()) {
+                                const currentVibes = editingProduct?.vibe || [];
+                                if (!currentVibes.includes(customVibe.trim())) {
+                                  setEditingProduct(prev => ({ ...prev, vibe: [...currentVibes, customVibe.trim()] }));
+                                }
+                                setCustomVibe('');
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (customVibe.trim()) {
+                            const currentVibes = editingProduct?.vibe || [];
+                            if (!currentVibes.includes(customVibe.trim())) {
+                              setEditingProduct(prev => ({ ...prev, vibe: [...currentVibes, customVibe.trim()] }));
+                            }
+                            setCustomVibe('');
+                          }
+                        }}
+                        className="bg-surface-container text-primary px-4 py-2 rounded-xl text-[10px] uppercase font-bold tracking-widest hover:bg-primary hover:text-white transition-all border border-primary/20"
+                      >
+                        Add
+                      </button>
+                    </div>
+                    {/* Display currently selected custom vibes not in the preset list */}
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {editingProduct?.vibe?.filter(v => !((siteConfigs.vibes_preset || VIBES.join(', ')).split(',').map(vp => vp.trim()).includes(v))).map(v => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setEditingProduct(prev => ({ ...prev, vibe: (prev.vibe || []).filter(vibe => vibe !== v) }))}
+                          className="bg-primary/10 text-primary px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 group hover:bg-primary/20"
+                        >
+                          {v} <X size={12} className="text-primary/50 group-hover:text-primary" />
+                        </button>
+                      ))}
                     </div>
                     {formErrors.vibes && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{formErrors.vibes}</p>}
                   </div>
@@ -1294,6 +2148,135 @@ export default function Admin() {
                   </button>
                 </div>
               </div>
+            </motion.div>
+          </div>
+        )}
+ 
+         {/* Shop Category Modal */}
+        {isShopCategoryModalOpen && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center px-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsShopCategoryModalOpen(false)} className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-2xl bg-white rounded-[40px] shadow-2xl border border-outline-variant/30 p-10 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-8 pb-4 border-b border-outline-variant/20">
+                <h2 className="text-2xl font-headline font-bold">{editingShopCategory?.id ? 'Edit Shop Category' : 'New Shop Category'}</h2>
+                <button onClick={() => setIsShopCategoryModalOpen(false)} className="p-2 text-outline hover:text-primary transition-colors"><X size={24} /></button>
+              </div>
+              <form onSubmit={handleSaveShopCategory} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Title</label>
+                    <input type="text" value={editingShopCategory?.title || ''} onChange={(e) => setEditingShopCategory(prev => ({ ...prev, title: e.target.value, slug: e.target.id ? prev.slug : e.target.value.toLowerCase().replace(/\s+/g, '-') }))} className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm" />
+                    {shopCategoryFormErrors.title && <p className="text-[9px] text-red-500 uppercase font-bold">{shopCategoryFormErrors.title}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Slug</label>
+                    <input type="text" value={editingShopCategory?.slug || ''} onChange={(e) => setEditingShopCategory(prev => ({ ...prev, slug: e.target.value }))} className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm" />
+                    {shopCategoryFormErrors.slug && <p className="text-[9px] text-red-500 uppercase font-bold">{shopCategoryFormErrors.slug}</p>}
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Sub-categories (comma separated)</label>
+                    <input type="text" value={editingShopCategory?.sub_categories?.join(', ') || ''} onChange={(e) => setEditingShopCategory(prev => ({ ...prev, sub_categories: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))} className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm" placeholder="Clothing, Accessories, etc." />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-4 pt-8">
+                  <button type="button" onClick={() => setIsShopCategoryModalOpen(false)} className="border border-outline-variant px-4 py-2 rounded-xl font-label text-xs uppercase font-bold">Cancel</button>
+                  <button type="submit" disabled={isLoading} className="bg-primary text-white px-6 py-3 rounded-2xl font-label text-xs uppercase font-bold flex items-center gap-2">{isLoading ? <RefreshCw className="animate-spin" /> : <Save size={16} />} Save</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Mood Modal */}
+        {isMoodModalOpen && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center px-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsMoodModalOpen(false)} className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-2xl bg-white rounded-[40px] shadow-2xl border border-outline-variant/30 p-10 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-8 pb-4 border-b border-outline-variant/20">
+                <h2 className="text-2xl font-headline font-bold">{editingMood?.id ? 'Edit Mood' : 'New Mood'}</h2>
+                <button onClick={() => setIsMoodModalOpen(false)} className="p-2 text-outline hover:text-primary transition-colors"><X size={24} /></button>
+              </div>
+              <form onSubmit={handleSaveMood} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Name</label>
+                    <input type="text" value={editingMood?.name || ''} onChange={(e) => setEditingMood(prev => ({ ...prev, name: e.target.value, slug: prev.id ? prev.slug : e.target.value.toLowerCase().replace(/\s+/g, '-') }))} className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Slug</label>
+                    <input type="text" value={editingMood?.slug || ''} onChange={(e) => setEditingMood(prev => ({ ...prev, slug: e.target.value }))} className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Vibe (Tag)</label>
+                    <input type="text" value={editingMood?.vibe || ''} onChange={(e) => setEditingMood(prev => ({ ...prev, vibe: e.target.value }))} className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm" placeholder="e.g. Clean Girl" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Item Count Tag</label>
+                    <input type="text" value={editingMood?.count || ''} onChange={(e) => setEditingMood(prev => ({ ...prev, count: e.target.value }))} className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm" placeholder="e.g. 1.2k" />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <ImageUpload 
+                      label="Mood Image" 
+                      value={editingMood?.image || ''} 
+                      onChange={(val) => setEditingMood(prev => ({ ...prev, image: val }))} 
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Linked Shop Category</label>
+                    <select value={editingMood?.linked_shop_category_id || ''} onChange={(e) => setEditingMood(prev => ({ ...prev, linked_shop_category_id: e.target.value }))} className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm">
+                      <option value="">None</option>
+                      {shopCategories.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-4 pt-8">
+                  <button type="button" onClick={() => setIsMoodModalOpen(false)} className="border border-outline-variant px-4 py-2 rounded-xl font-label text-xs uppercase font-bold">Cancel</button>
+                  <button type="submit" disabled={isLoading} className="bg-primary text-white px-6 py-3 rounded-2xl font-label text-xs uppercase font-bold flex items-center gap-2">Save</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Find Here Modal */}
+        {isFindHereModalOpen && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center px-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsFindHereModalOpen(false)} className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-2xl bg-white rounded-[40px] shadow-2xl border border-outline-variant/30 p-10 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-8 pb-4 border-b border-outline-variant/20">
+                <h2 className="text-2xl font-headline font-bold">{editingFindHere?.id ? 'Edit Item' : 'New Item'}</h2>
+                <button onClick={() => setIsFindHereModalOpen(false)} className="p-2 text-outline hover:text-primary transition-colors"><X size={24} /></button>
+              </div>
+              <form onSubmit={handleSaveFindHere} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Title</label>
+                    <input type="text" value={editingFindHere?.title || ''} onChange={(e) => setEditingFindHere(prev => ({ ...prev, title: e.target.value }))} className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm" />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Description</label>
+                    <textarea value={editingFindHere?.description || ''} onChange={(e) => setEditingFindHere(prev => ({ ...prev, description: e.target.value }))} rows={3} className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm resize-none" />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <ImageUpload 
+                      label="Item Image" 
+                      value={editingFindHere?.image || ''} 
+                      onChange={(val) => setEditingFindHere(prev => ({ ...prev, image: val }))} 
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Linked Blog Category</label>
+                    <select value={editingFindHere?.linked_blog_category_slug || ''} onChange={(e) => setEditingFindHere(prev => ({ ...prev, linked_blog_category_slug: e.target.value }))} className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm">
+                      <option value="">None</option>
+                      {blogCategories.map(c => <option key={c.slug} value={c.slug}>{c.title}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-4 pt-8">
+                  <button type="button" onClick={() => setIsFindHereModalOpen(false)} className="border border-outline-variant px-4 py-2 rounded-xl font-label text-xs uppercase font-bold">Cancel</button>
+                  <button type="submit" disabled={isLoading} className="bg-primary text-white px-6 py-3 rounded-2xl font-label text-xs uppercase font-bold flex items-center gap-2">Save</button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}
@@ -1428,22 +2411,23 @@ export default function Admin() {
                     <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Date</label>
                     <input 
                       type="date"
-                      value={editingBlog?.date || ''}
+                      value={formatDateForInput(editingBlog?.date)}
                       onChange={(e) => setEditingBlog(prev => ({ ...prev, date: e.target.value }))}
                       className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-sm"
                     />
                     {blogFormErrors.date && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{blogFormErrors.date}</p>}
                   </div>
 
-                  {/* Cover Image URL */}
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Cover Image URL</label>
-                    <input 
-                      type="text"
-                      value={editingBlog?.image || ''}
-                      onChange={(e) => setEditingBlog(prev => ({ ...prev, image: e.target.value }))}
-                      placeholder="https://..."
-                      className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-sm"
+                  {/* Cover and Additional Images */}
+                  <div className="md:col-span-2 space-y-2">
+                    <MultiImageUpload 
+                      label="Post Images (First will be main cover)" 
+                      value={editingBlog?.images || (editingBlog?.image ? [editingBlog.image] : [])} 
+                      onChange={(urls) => setEditingBlog(prev => ({ 
+                        ...prev, 
+                        images: urls,
+                        image: urls[0] || '' 
+                      }))} 
                     />
                     {blogFormErrors.image && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{blogFormErrors.image}</p>}
                   </div>
@@ -1469,7 +2453,7 @@ export default function Admin() {
                       value={editingBlog?.content || ''}
                       onChange={(e) => setEditingBlog(prev => ({ ...prev, content: e.target.value }))}
                       placeholder="Markdown content..."
-                      className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-sm min-h-[300px]"
+                      className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-sm min-h-75"
                     />
                     {blogFormErrors.content && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{blogFormErrors.content}</p>}
                   </div>
@@ -1477,7 +2461,7 @@ export default function Admin() {
                   {/* Recommended Products */}
                   <div className="space-y-4 md:col-span-2">
                     <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Recommended Products</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto p-4 border border-outline-variant/20 rounded-2xl bg-surface-container/20">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-75 overflow-y-auto p-4 border border-outline-variant/20 rounded-2xl bg-surface-container/20">
                       {allProducts.filter(p => p.isActive).map(p => {
                         const isSelected = editingBlog?.recommendedProducts?.includes(p.id);
                         return (
@@ -1497,6 +2481,36 @@ export default function Admin() {
                             <div className="min-w-0">
                               <p className="text-xs font-bold truncate">{p.title}</p>
                               <p className="text-[9px] text-primary">{productPrices[p.id] || formatPrice(p.price)}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Related Blog Posts */}
+                  <div className="space-y-4 md:col-span-2">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Related Blog Posts (You Might Also Love)</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-75 overflow-y-auto p-4 border border-outline-variant/20 rounded-2xl bg-surface-container/20">
+                      {allBlogPosts.filter(post => post.id !== editingBlog?.id).map(post => {
+                        const isSelected = editingBlog?.relatedPosts?.includes(post.id);
+                        return (
+                          <label key={post.id} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-outline-variant/20 cursor-pointer hover:border-primary transition-all">
+                            <input 
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                const current = editingBlog?.relatedPosts || [];
+                                const next = e.target.checked 
+                                  ? [...current, post.id] 
+                                  : current.filter(id => id !== post.id);
+                                setEditingBlog(prev => ({ ...prev, relatedPosts: next }));
+                              }}
+                              className="w-4 h-4 rounded border-outline-variant/30 text-primary focus:ring-primary"
+                            />
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold truncate">{post.title}</p>
+                              <p className="text-[9px] text-primary uppercase font-label tracking-widest">{post.category}</p>
                             </div>
                           </label>
                         );
@@ -1621,15 +2635,12 @@ export default function Admin() {
                     {categoryFormErrors.slug && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{categoryFormErrors.slug}</p>}
                   </div>
 
-                  {/* Image URL */}
+                  {/* Image */}
                   <div className="space-y-2">
-                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Image URL</label>
-                    <input 
-                      type="text"
-                      value={editingCategory?.image || ''}
-                      onChange={(e) => setEditingCategory(prev => ({ ...prev, image: e.target.value }))}
-                      placeholder="https://..."
-                      className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-sm"
+                    <ImageUpload 
+                      label="Category Image" 
+                      value={editingCategory?.image || ''} 
+                      onChange={(val) => setEditingCategory(prev => ({ ...prev, image: val }))} 
                     />
                     {categoryFormErrors.image && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{categoryFormErrors.image}</p>}
                   </div>

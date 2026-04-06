@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Search, Plus, Menu, X, Heart, User, LogOut } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -20,18 +20,18 @@ export function Navbar() {
 
   return (
     <header className="bg-surface/90 backdrop-blur-md border-b border-outline-variant sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-12">
-          <Link to="/" className="text-2xl font-headline italic font-bold text-on-surface">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex justify-between items-center">
+        <div className="flex items-center gap-6 md:gap-12">
+          <Link to="/" className="text-xl md:text-2xl font-headline italic font-bold text-on-surface whitespace-nowrap">
             The Aesthetic Edit
           </Link>
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-6 lg:gap-8">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
                 className={cn(
-                  "font-label text-sm tracking-widest uppercase transition-all duration-300 relative group",
+                  "font-label text-[10px] lg:text-sm tracking-widest uppercase transition-all duration-300 relative group",
                   location.pathname === link.path 
                     ? "text-primary" 
                     : "text-on-surface-variant hover:text-primary"
@@ -47,15 +47,15 @@ export function Navbar() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2 md:gap-6">
           <Link 
             to="/wishlist" 
             className="relative p-2 text-on-surface-variant hover:text-primary transition-colors"
             aria-label={`Wishlist (${wishlistCount} items)`}
           >
-            <Heart size={20} className={cn(wishlistCount > 0 && "fill-primary text-primary")} />
+            <Heart className={cn("w-4.5 h-4.5 md:w-5 md:h-5", wishlistCount > 0 && "fill-primary text-primary")} />
             {wishlistCount > 0 && (
-              <span className="absolute top-0 right-0 bg-primary text-white text-[9px] rounded-full min-w-[16px] h-[16px] flex items-center justify-center font-bold px-1 border-2 border-surface">
+              <span className="absolute top-0 right-0 bg-primary text-white text-[8px] md:text-[9px] rounded-full min-w-3.5 md:min-w-4 h-3.5 md:h-4 flex items-center justify-center font-bold px-1 border-2 border-surface">
                 {wishlistCount}
               </span>
             )}
@@ -63,12 +63,12 @@ export function Navbar() {
 
           <div className="hidden md:flex items-center gap-4">
             {user ? (
-              <div className="flex items-center gap-4 border-l border-outline-variant/30 pl-6">
+              <div className="flex items-center gap-4 border-l border-outline-variant/30 pl-4 lg:pl-6">
                 <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-label uppercase tracking-widest text-outline font-bold">
+                  <span className="text-[8px] lg:text-[10px] font-label uppercase tracking-widest text-outline font-bold">
                     Hello,
                   </span>
-                  <span className="text-xs font-bold text-on-surface">
+                  <span className="text-[10px] lg:text-xs font-bold text-on-surface">
                     {user.name.split(' ')[0]}
                   </span>
                 </div>
@@ -93,12 +93,12 @@ export function Navbar() {
 
           <Link 
             to="/free-guide" 
-            className="hidden lg:block bg-primary text-on-primary px-6 py-2.5 rounded-lg font-label text-xs uppercase tracking-widest hover:bg-primary-hover transition-all shadow-lg shadow-primary/10"
+            className="hidden lg:block bg-primary text-on-primary px-5 py-2 rounded-lg font-label text-[10px] uppercase tracking-widest hover:bg-primary-hover transition-all shadow-lg shadow-primary/10 font-bold"
           >
-            Get Free Guide
+            Free Guide
           </Link>
           <button 
-            className="md:hidden text-on-surface"
+            className="md:hidden p-2 text-on-surface"
             onClick={() => setIsOpen(!isOpen)}
           >
             {isOpen ? <X size={24} /> : <Menu size={24} />}
@@ -166,16 +166,27 @@ export function Navbar() {
 }
 
 export function Footer() {
+  const [siteConfigs, setSiteConfigs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch('/api/home-shop/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setSiteConfigs(data.data);
+      })
+      .catch(err => console.error('Failed to fetch site config', err));
+  }, []);
+
   return (
-    <footer className="bg-gradient-to-b from-[#3e2a1f] to-[#5a3b2a] text-surface pt-24 pb-12">
+    <footer className="bg-linear-to-b from-[#3e2a1f] to-[#5a3b2a] text-surface pt-24 pb-12">
       <div className="max-w-7xl mx-auto px-6 border-b border-white/10 pb-20">
         {/* Top Section: Title & Quote */}
         <div className="flex flex-col items-center text-center space-y-8 mb-20">
           <Link to="/" className="text-4xl md:text-6xl font-headline italic block text-white drop-shadow-sm">
-            The Aesthetic Edit
+            {siteConfigs.home_hero_title || 'The Aesthetic Edit'}
           </Link>
           <p className="font-label text-xs md:text-sm uppercase tracking-[0.4em] text-surface/70 leading-relaxed max-w-3xl mx-auto">
-            Your destination for Pinterest-inspired style, intentional living, and curated shopping.
+            {siteConfigs.footer_about || 'Your destination for Pinterest-inspired style, intentional living, and curated shopping.'}
           </p>
         </div>
         
@@ -214,13 +225,13 @@ export function Footer() {
       </div>
       
       <div className="max-w-7xl mx-auto px-12 pt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-[11px] font-label uppercase tracking-[0.3em] text-surface/40 items-center">
-        <div className="text-center md:text-left break-words">
-          <p>© 2026 THE AESTHETIC EDIT. ALL RIGHTS RESERVED.</p>
+        <div className="text-center md:text-left wrap-break-word">
+          <p>{siteConfigs.footer_copyright || '© 2026 THE AESTHETIC EDIT. ALL RIGHTS RESERVED.'}</p>
         </div>
         <div className="text-center">
           <Link to="/admin" className="hover:text-surface/60 transition-colors">Admin</Link>
         </div>
-        <div className="text-center md:text-right break-words">
+        <div className="text-center md:text-right wrap-break-word">
           <p className="hover:text-surface/60 cursor-pointer transition-colors">AFFILIATE DISCLOSURE</p>
         </div>
       </div>

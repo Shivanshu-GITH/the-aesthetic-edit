@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { Clock, Share2, Heart, ArrowRight, ShoppingBag, Check } from 'lucide-react';
 import { formatPrice } from '../lib/currency';
 import SEOMeta from '../components/SEOMeta';
+import ImageCarousel from '../components/ImageCarousel';
 import { useBlogPost } from '../hooks/useBlog';
 import { BlogPostSkeleton } from '../components/Skeleton';
 import PinterestSaveButton from '../components/PinterestSaveButton';
@@ -90,11 +91,15 @@ export default function BlogPost() {
     }
   };
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [slug]);
+
   if (loading) return <BlogPostSkeleton />;
 
   if (error || !post) return (
-    <div className="p-24 text-center space-y-6">
-      <h2 className="text-3xl font-headline font-bold text-on-surface">Post not found</h2>
+    <div className="p-16 md:p-24 text-center space-y-6">
+      <h2 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">Post not found</h2>
       <Link to="/blog" className="text-primary font-label text-xs uppercase tracking-widest font-bold border-b border-primary">
         Back to Blog
       </Link>
@@ -109,7 +114,7 @@ export default function BlogPost() {
   const hasMoreRelated = !showAllRelated && relatedPosts.length > visibleRelated.length;
 
   return (
-    <div className="pb-32 bg-surface">
+    <div className="pb-32 bg-surface overflow-x-hidden">
       <SEOMeta 
         title={post.title}
         description={post.excerpt}
@@ -122,12 +127,12 @@ export default function BlogPost() {
         }}
       />
       {/* Article Header */}
-      <header className="max-w-4xl mx-auto px-6 pt-24 pb-16 text-center space-y-8 relative">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-accent-blush/30 to-transparent pointer-events-none"></div>
+      <header className="max-w-4xl mx-auto px-6 pt-16 md:pt-24 pb-12 md:pb-16 text-center space-y-6 md:space-y-8 relative">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-linear-to-b from-accent-blush/30 to-transparent pointer-events-none"></div>
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex items-center justify-center gap-4 font-label text-[10px] uppercase tracking-[0.3em] text-primary font-bold relative z-10"
+          className="flex items-center justify-center gap-3 md:gap-4 font-label text-[9px] md:text-[10px] uppercase tracking-[0.3em] text-primary font-bold relative z-10"
         >
           <span>{post.category}</span>
           <span className="w-1 h-1 bg-accent-peach rounded-full"></span>
@@ -137,7 +142,7 @@ export default function BlogPost() {
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-5xl md:text-7xl font-headline font-bold leading-tight text-on-surface relative z-10"
+          className="text-4xl md:text-6xl lg:text-7xl font-headline font-bold leading-tight text-on-surface relative z-10"
         >
           {post.title}
         </motion.h1>
@@ -146,56 +151,55 @@ export default function BlogPost() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="flex items-center justify-center gap-6 relative z-10"
+          className="flex items-center justify-center gap-4 md:gap-6 relative z-10"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-white shadow-sm">
               <img src="https://i.pravatar.cc/150?u=elena" alt={post.author} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             </div>
-            <span className="font-label text-[10px] uppercase tracking-widest font-bold text-on-surface">{post.author}</span>
+            <span className="font-label text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-on-surface">{post.author}</span>
           </div>
           <div className="h-4 w-px bg-outline-variant/30"></div>
-          <div className="flex items-center gap-2 font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+          <div className="flex items-center gap-2 font-label text-[9px] md:text-[10px] uppercase tracking-widest text-on-surface-variant">
             <Clock size={14} /> {post.readTime}
           </div>
         </motion.div>
       </header>
 
-      {/* Featured Image */}
-      <section className="max-w-7xl mx-auto px-6 mb-24">
+      {/* Featured Image and Carousel */}
+      <section className="max-w-7xl mx-auto px-6 mb-16 md:mb-24">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1 }}
-          className="aspect-[21/9] rounded-[48px] overflow-hidden shadow-2xl border-[12px] border-white bg-surface-container"
+          className="rounded-4xl md:rounded-[48px] overflow-hidden shadow-2xl border-8 md:border-12 border-white"
         >
-          <img 
-            src={post.image} 
-            alt={post.title} 
-            loading="lazy"
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
+          <ImageCarousel 
+            images={post.images && post.images.length > 0 ? post.images : [post.image]} 
+            aspectRatio="aspect-[21/9]"
           />
         </motion.div>
       </section>
 
       {/* Article Content */}
       <article className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
           {/* Main Content */}
-          <div className="lg:col-span-8 space-y-12 text-lg text-on-surface-variant leading-loose font-body">
-            <p className="text-2xl font-serif italic text-on-surface leading-relaxed border-l-4 border-accent-peach pl-8 py-2">
+          <div className="lg:col-span-8 space-y-8 md:space-y-12 text-base md:text-lg text-on-surface-variant leading-loose font-body">
+            <p className="text-xl md:text-2xl font-serif italic text-on-surface leading-relaxed border-l-4 border-accent-peach pl-6 md:pl-8 py-2">
               {post.excerpt}
             </p>
             
-            <p>{post.content}</p>
+            <div className="prose prose-stone prose-lg max-w-none">
+              <p>{post.content}</p>
+            </div>
 
             <div className="lg:hidden space-y-8 py-12 border-t border-outline-variant/30">
-              <h2 className="text-3xl font-headline font-bold text-on-surface">Shop the Look</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              <h2 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">Shop the Look</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
                 {recommendedProducts.map((product) => (
-                  <div key={product.id} className="group space-y-4 bg-white p-6 rounded-[32px] border border-outline-variant/30 shadow-sm">
-                    <div className="aspect-square rounded-[24px] overflow-hidden relative bg-surface-container">
+                  <div key={product.id} className="group space-y-4 bg-white p-5 md:p-6 rounded-4xl border border-outline-variant/30 shadow-sm">
+                    <div className="aspect-square rounded-3xl overflow-hidden relative bg-surface-container">
                       <Link to={`/shop/product/${product.id}`}>
                         <img 
                           src={product.image} 
@@ -212,7 +216,7 @@ export default function BlogPost() {
                       <div className="flex gap-3">
                         <button 
                           onClick={() => handleAffiliateClick(product)}
-                          className="flex-1 bg-primary text-white py-3 rounded-xl font-label text-[10px] uppercase tracking-widest font-bold"
+                          className="flex-1 bg-primary text-white py-3 rounded-xl font-label text-[9px] md:text-[10px] uppercase tracking-widest font-bold"
                         >
                           Shop Now
                         </button>
@@ -232,7 +236,7 @@ export default function BlogPost() {
           {/* Sticky Sidebar */}
           <aside className="hidden lg:block lg:col-span-4">
             <div className="sticky top-32 space-y-8">
-              <div className="bg-white rounded-[32px] p-8 border border-outline-variant/30 shadow-sm space-y-6">
+              <div className="bg-white rounded-4xl p-8 border border-outline-variant/30 shadow-sm space-y-6">
                 <div className="flex items-center gap-3">
                   <ShoppingBag size={20} className="text-primary" />
                   <h2 className="text-xl font-headline font-bold text-on-surface">Shop the Look</h2>
@@ -245,7 +249,7 @@ export default function BlogPost() {
                   {recommendedProducts.map((p, i) => (
                     <div key={p.id} className={cn("pt-6 space-y-4", i !== 0 && "border-t border-outline-variant/20")}>
                       <div className="flex gap-4">
-                        <div className="w-20 h-20 rounded-2xl overflow-hidden bg-surface-container flex-shrink-0">
+                        <div className="w-20 h-20 rounded-2xl overflow-hidden bg-surface-container shrink-0">
                           <img 
                             src={p.image} 
                             alt={p.title} 
@@ -254,53 +258,23 @@ export default function BlogPost() {
                             referrerPolicy="no-referrer"
                           />
                         </div>
-                        <div className="space-y-1">
-                          <Link to={`/shop/product/${p.id}`}>
-                            <h3 className="font-headline font-bold text-sm text-on-surface hover:text-primary transition-colors line-clamp-2">{p.title}</h3>
-                          </Link>
-                          <p className="text-primary font-bold text-sm">{productPrices[p.id] || formatPrice(p.price)}</p>
+                        <div className="flex flex-col justify-center min-w-0">
+                          <h3 className="text-sm font-headline font-bold truncate">{p.title}</h3>
+                          <p className="text-primary text-sm font-bold mt-1">{productPrices[p.id] || formatPrice(p.price)}</p>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-3">
                         <button 
                           onClick={() => handleAffiliateClick(p)}
-                          className="flex-1 bg-primary text-on-primary text-[9px] font-label uppercase tracking-widest px-3 py-2.5 rounded-xl hover:bg-primary-hover transition-all font-bold"
+                          className="flex-1 bg-primary text-white py-2.5 rounded-xl font-label text-[9px] uppercase tracking-widest font-bold hover:bg-primary-hover transition-all"
                         >
-                          Shop
+                          Shop Now
                         </button>
-                        <PinterestSaveButton product={p} variant="card" className="w-9 h-9" />
+                        <PinterestSaveButton product={p} variant="card" />
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-
-              {/* Social Actions */}
-              <div className="flex justify-center gap-6">
-                <button 
-                  onClick={handleWishlist}
-                  className={cn(
-                    "w-14 h-14 rounded-full border flex items-center justify-center transition-all shadow-sm",
-                    post && isJournalWishlisted(post.id)
-                      ? "bg-accent-blush border-primary text-primary"
-                      : "border-outline-variant/30 text-outline hover:text-primary hover:border-primary hover:bg-white"
-                  )}
-                  aria-label={post && isJournalWishlisted(post.id) ? "Remove from saved" : "Save journal"}
-                >
-                  <Heart size={24} className={post && isJournalWishlisted(post.id) ? "fill-current" : ""} />
-                </button>
-                <button 
-                  onClick={handleShare}
-                  className={cn(
-                    "w-14 h-14 rounded-full border flex items-center justify-center transition-all shadow-sm",
-                    isShared
-                      ? "bg-accent-peach border-accent-peach text-on-primary"
-                      : "border-outline-variant/30 text-outline hover:text-primary hover:border-primary hover:bg-white"
-                  )}
-                  aria-label="Share journal"
-                >
-                  {isShared ? <Check size={24} /> : <Share2 size={24} />}
-                </button>
               </div>
             </div>
           </aside>
@@ -308,13 +282,13 @@ export default function BlogPost() {
       </article>
 
       {/* Related Posts */}
-      <section className="max-w-7xl mx-auto px-6 mt-40 pt-24 border-t border-outline-variant/30">
-        <h2 className="text-3xl font-headline font-bold mb-12 text-on-surface">You Might Also Love</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+      <section className="max-w-7xl mx-auto px-6 mt-24 md:mt-40 pt-16 md:pt-24 border-t border-outline-variant/30">
+        <h2 className="text-2xl md:text-3xl font-headline font-bold mb-10 md:mb-12 text-on-surface">You Might Also Love</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
           {visibleRelated.map((related) => (
-            <div key={related.id} className="group bg-white p-4 rounded-[32px] border border-outline-variant/30 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
+            <div key={related.id} className="group bg-white p-4 rounded-4xl border border-outline-variant/30 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
               <Link to={`/blog/${related.categorySlug}/${related.slug}`}>
-                <div className="aspect-[4/3] rounded-[24px] overflow-hidden mb-6 bg-surface-container">
+                <div className="aspect-4/3 rounded-3xl overflow-hidden mb-6 bg-surface-container">
                   <img 
                     src={related.image} 
                     alt={related.title} 
@@ -323,7 +297,7 @@ export default function BlogPost() {
                     referrerPolicy="no-referrer" 
                   />
                 </div>
-                <span className="font-label text-[10px] uppercase tracking-widest text-primary font-bold">{related.category}</span>
+                <span className="font-label text-[9px] md:text-[10px] uppercase tracking-widest text-primary font-bold">{related.category}</span>
                 <h3 className="text-xl font-headline font-bold mt-2 text-on-surface group-hover:text-primary transition-colors">{related.title}</h3>
               </Link>
             </div>
@@ -334,9 +308,9 @@ export default function BlogPost() {
           <div className="text-center pt-12">
             <button 
               onClick={() => setShowAllRelated(true)}
-              className="text-primary font-label text-xs uppercase tracking-widest font-bold border-b border-primary/20 pb-1 hover:border-primary transition-all"
+              className="text-primary font-label text-[10px] md:text-xs uppercase tracking-widest font-bold border-b border-primary/20 pb-1 hover:border-primary transition-all"
             >
-              See More Articles
+              See More Inspiration
             </button>
           </div>
         )}

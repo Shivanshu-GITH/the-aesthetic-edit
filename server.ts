@@ -15,6 +15,8 @@ import authRouter from './src/server/routes/auth.js';
 import contactRouter from './src/server/routes/contact.js'; 
 import currencyRouter from './src/server/routes/currency.js'; 
 import geoRouter from './src/server/routes/geo.js'; 
+import homeShopRouter from './src/server/routes/home_shop.js'; 
+import uploadRouter from './src/server/routes/upload.js';
 import dotenv from 'dotenv'; 
  
 dotenv.config(); 
@@ -24,7 +26,7 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3000; 
  
   // 1. Initialize DB 
-  // await initDb(); 
+  await initDb(); 
  
   // 2. Middleware 
   app.use(helmet({ 
@@ -33,7 +35,7 @@ async function startServer() {
         defaultSrc: ["'self'"], 
         scriptSrc: ["'self'", "'unsafe-inline'"], 
         styleSrc: ["'self'", "'unsafe-inline'"], 
-        imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https://*.amazonaws.com"], 
+        imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https://res.cloudinary.com", "https://*.amazonaws.com"], 
         connectSrc: ["'self'", "https://ipapi.co", "https://open.er-api.com"], 
         fontSrc: ["'self'"], 
         objectSrc: ["'none'"], 
@@ -59,6 +61,8 @@ async function startServer() {
   app.use('/api/contact', contactRouter); 
   app.use('/api/currency', currencyRouter); 
   app.use('/api/geo', geoRouter); 
+  app.use('/api/home-shop', homeShopRouter); 
+  app.use('/api/upload', uploadRouter);
  
   // SEO Endpoints 
   app.get('/robots.txt', (req, res) => { 

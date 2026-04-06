@@ -77,7 +77,7 @@ router.post('/login', loginLimit, async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid email or password' }); 
     } 
     const { password: _, ...userWithoutPassword } = user; 
-    const userToIssue = { ...userWithoutPassword, provider: 'local' }; 
+    const userToIssue = { id: user.id, name: user.name, email: user.email, provider: 'local' }; 
     issueToken(res, userToIssue); 
     res.json({ success: true, data: { user: userToIssue } }); 
   } catch (error: any) { 
