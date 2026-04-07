@@ -302,10 +302,6 @@ export const AdminSiteConfig: React.FC = () => {
     setIsLoading,
     showToast
   } = useAdminContext();
-  const [guideUploadState, setGuideUploadState] = useState<{
-    fileName: string;
-    status: 'idle' | 'uploading' | 'success' | 'error';
-  }>({ fileName: '', status: 'idle' });
 
   const handleUpdateConfig = async (key: string, value: string) => {
     setIsLoading(true);
@@ -326,43 +322,6 @@ export const AdminSiteConfig: React.FC = () => {
     }
   };
 
-  const handleGuideUpload = async (file: File) => {
-    setGuideUploadState({ fileName: file.name, status: 'uploading' });
-    if (file.type !== 'application/pdf') {
-      showToast('Only PDF files are allowed', 'error');
-      setGuideUploadState({ fileName: file.name, status: 'error' });
-      return;
-    }
-    if (file.size > 20 * 1024 * 1024) {
-      showToast('File size exceeds 20MB', 'error');
-      setGuideUploadState({ fileName: file.name, status: 'error' });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append('guide', file);
-      const res = await adminFetch('/api/upload/guide', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.success || !data?.url) {
-        showToast(data?.error || 'Guide upload failed', 'error');
-        setGuideUploadState({ fileName: file.name, status: 'error' });
-        return;
-      }
-      await handleUpdateConfig('free_guide_file_url', data.url);
-      showToast('Guide uploaded successfully', 'success');
-      setGuideUploadState({ fileName: file.name, status: 'success' });
-    } catch {
-      showToast('Guide upload failed', 'error');
-      setGuideUploadState({ fileName: file.name, status: 'error' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const ConfigSection: React.FC<{ title: string; icon: any; children: React.ReactNode }> = ({ title, icon: Icon, children }) => (
     <div className="bg-white rounded-[40px] border border-outline-variant/30 shadow-sm overflow-hidden">
@@ -595,34 +554,7 @@ export const AdminSiteConfig: React.FC = () => {
         {/* Footer Section */}
         <ConfigSection title="Free Guide Page" icon={Gift}>
           <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="font-label text-[10px] uppercase tracking-widest font-bold text-outline">Upload Guide to Cloudinary (PDF)</label>
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void handleGuideUpload(file);
-                  e.currentTarget.value = '';
-                }}
-                className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-sm"
-              />
-              <p className="text-[10px] text-outline/80">
-                {guideUploadState.fileName
-                  ? `Selected: ${guideUploadState.fileName}`
-                  : 'Choose a file from device. It uploads and auto-fills the guide URL below.'}
-              </p>
-              {guideUploadState.status === 'uploading' && (
-                <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Uploading guide...</p>
-              )}
-              {guideUploadState.status === 'success' && (
-                <p className="text-[10px] text-green-600 font-bold uppercase tracking-widest">Upload complete</p>
-              )}
-              {guideUploadState.status === 'error' && (
-                <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest">Upload failed</p>
-              )}
-            </div>
-            <ConfigField label="Guide File URL (Manual Option)" name="free_guide_file_url" placeholder="https://.../guide.pdf" />
+            <ConfigField label="Guide File URL" name="free_guide_file_url" placeholder="https://.../guide.pdf" />
             <ConfigField label="Eyebrow" name="free_guide_kicker" placeholder="Free Resource" />
             <ConfigField label="Title — Line Before Break" name="free_guide_title_line1" placeholder="Get Your Free" />
             <ConfigField label="Title — Italic Emphasis Line" name="free_guide_title_emphasis" placeholder="Pinterest Growth" />
