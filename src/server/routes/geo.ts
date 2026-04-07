@@ -40,7 +40,7 @@ router.get('/detect', geoLimit, async (req, res) => {
     console.error('Geo detection error:', err);
     res.status(200).json({ 
       success: true, 
-      data: { country_code: 'US', country_name: 'United States', city: 'New York', currency: 'USD' } 
+      data: { country_code: 'IN', country_name: 'India', city: 'Mumbai', currency: 'INR' } 
     }); 
   } 
 }); 

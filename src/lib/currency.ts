@@ -73,7 +73,7 @@ function mapCountryToCurrency(countryCode: string): SupportedCurrency {
     GR: 'EUR', LU: 'EUR', MT: 'EUR', CY: 'EUR', SK: 'EUR', 
     SI: 'EUR', EE: 'EUR', LV: 'EUR', LT: 'EUR', HR: 'EUR', 
   }; 
-  return map[countryCode] || 'USD'; 
+  return map[countryCode] || 'INR'; 
 } 
  
 function detectCurrencyFromBrowser(): SupportedCurrency { 
@@ -89,7 +89,7 @@ function detectCurrencyFromBrowser(): SupportedCurrency {
     if (tz.startsWith('Australia/')) return 'AUD'; 
     if (tz.startsWith('America/Toronto') || tz === 'Canada/Eastern') return 'CAD'; 
   } catch {} 
-  return 'USD'; 
+  return 'INR'; 
 } 
  
 async function fetchLiveRates(): Promise<Record<string, number>> { 
