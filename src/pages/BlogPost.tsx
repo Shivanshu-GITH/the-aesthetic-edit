@@ -189,14 +189,14 @@ export default function BlogPost() {
         >
           <ImageCarousel 
             images={post.images && post.images.length > 0 ? post.images : [post.image]} 
-            aspectRatio="aspect-[21/9]"
+            aspectRatio="aspect-[4/3] sm:aspect-[16/9] lg:aspect-[21/9]"
             autoPlay={true}
           />
         </motion.div>
       </section>
 
       {/* Article Content */}
-      <article className="max-w-7xl mx-auto px-6">
+      <article className="max-w-7xl mx-auto px-4 sm:px-6 min-w-0 pb-[max(2rem,env(safe-area-inset-bottom,0px))]">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
           {/* Main Content */}
           <div className="lg:col-span-8 space-y-8 md:space-y-12 text-base md:text-lg text-on-surface-variant leading-loose font-body">
@@ -204,8 +204,15 @@ export default function BlogPost() {
               {post.excerpt}
             </p>
             
-            <div className="prose prose-stone prose-lg max-w-none">
-              <p>{post.content}</p>
+            <div className="max-w-none text-base md:text-lg text-on-surface-variant leading-[1.75] font-body space-y-6">
+              {String(post.content ?? '')
+                .split(/\n+/)
+                .filter((p) => p.trim())
+                .map((para, i) => (
+                <p key={i} className="break-words whitespace-pre-wrap">
+                  {para}
+                </p>
+              ))}
             </div>
 
             <div className="lg:hidden space-y-8 py-12 border-t border-outline-variant/30">

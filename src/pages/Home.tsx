@@ -86,13 +86,13 @@ export default function Home() {
                 to="/shop" 
                 className="bg-primary text-on-primary px-8 md:px-10 py-3.5 md:py-4 rounded-2xl font-label font-semibold tracking-widest uppercase hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 text-sm md:text-base"
               >
-                Shop the Aesthetic
+                {siteConfigs.home_hero_shop_btn || 'Shop the Aesthetic'}
               </Link>
               <Link 
                 to="/blog" 
                 className="border-2 border-primary text-primary px-8 md:px-10 py-3.5 md:py-4 rounded-2xl font-label font-semibold tracking-widest uppercase hover:bg-accent-blush transition-all text-sm md:text-base"
               >
-                Explore the Blog
+                {siteConfigs.home_hero_blog_btn || 'Explore the Blog'}
               </Link>
             </div>
           </motion.div>
@@ -146,7 +146,7 @@ export default function Home() {
                     to={cat.linked_category_title ? `/shop?category=${encodeURIComponent(cat.linked_category_title)}` : (cat.vibe ? `/shop?vibe=${encodeURIComponent(cat.vibe)}` : '/shop')}
                     className="inline-block bg-white/90 backdrop-blur-sm text-primary text-[9px] font-label uppercase tracking-widest px-3 py-1.5 rounded-full font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-sm"
                   >
-                    Shop this vibe →
+                    {siteConfigs.home_mood_shop_link_cta || 'Shop this vibe →'}
                   </Link>
                   <Link to={cat.slug ? `/blog/${cat.slug}` : '#'} className="block">
                     <span className="text-white font-label font-semibold text-sm tracking-widest uppercase">{cat.name}</span>
@@ -162,7 +162,7 @@ export default function Home() {
               onClick={() => setShowAllMoods(true)}
               className="text-primary font-label text-xs uppercase tracking-widest font-bold border-b border-primary/20 pb-1 hover:border-primary transition-all"
             >
-              See More Moods
+              {siteConfigs.home_mood_see_more_cta || 'See More Moods'}
             </button>
           </div>
         )}
@@ -174,7 +174,7 @@ export default function Home() {
           <h2 className="text-3xl md:text-4xl font-headline font-bold text-on-surface text-center md:text-left">
             {siteConfigs.home_journal_title || 'Latest from the Journal'}
           </h2>
-          <Link to="/blog" className="text-primary font-label text-sm uppercase tracking-widest border-b border-primary/20 pb-1 hover:border-primary transition-all">View All Posts</Link>
+          <Link to="/blog" className="text-primary font-label text-sm uppercase tracking-widest border-b border-primary/20 pb-1 hover:border-primary transition-all">{siteConfigs.home_journal_view_all || 'View All Posts'}</Link>
         </div>
         
         {journalLoading ? (
@@ -254,7 +254,7 @@ export default function Home() {
           {/* Fallback if no items configured */}
           {(!Array.isArray(findHereItems) || findHereItems.length === 0) && (
             <div className="md:col-span-4 md:row-span-2 flex items-center justify-center border-2 border-dashed border-outline-variant/30 rounded-4xl aspect-square md:aspect-auto">
-              <p className="text-outline font-label uppercase tracking-widest text-xs">Configure "What You'll Find Here" in Admin</p>
+              <p className="text-outline font-label uppercase tracking-widest text-xs">{siteConfigs.home_find_here_empty_hint || 'Configure What You’ll Find Here in Admin'}</p>
             </div>
           )}
         </div>

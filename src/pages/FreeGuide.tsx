@@ -1,16 +1,48 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Download, Users, Star, Loader2, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Download, Star, Loader2, ArrowRight } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
 
+const DEFAULT_BULLETS = [
+  'The "Aesthetic First" strategy for viral pins',
+  'How to optimize your profile for SEO discovery',
+  '3 templates for high-converting pin designs',
+  'The daily workflow for consistent growth',
+];
+
 export default function FreeGuide() {
+  const [siteConfigs, setSiteConfigs] = React.useState<Record<string, string>>({});
   const [submitted, setSubmitted] = React.useState(false);
   const [email, setEmail] = React.useState('');
   const [name, setName] = React.useState('');
   const [errors, setErrors] = React.useState<{ name?: string, email?: string }>({});
 
   const [isLoading, setIsLoading] = React.useState(false);
+
+  useEffect(() => {
+    fetch('/api/home-shop/config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setSiteConfigs(data.data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const bulletItems = useMemo(() => {
+    const raw = siteConfigs.free_guide_bullets?.trim();
+    if (!raw) return DEFAULT_BULLETS;
+    const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+    return lines.length > 0 ? lines : DEFAULT_BULLETS;
+  }, [siteConfigs.free_guide_bullets]);
+
+  const proofAvatars = useMemo(
+    () =>
+      [1, 2, 3, 4].map(
+        (i) => siteConfigs[`free_guide_proof_avatar_${i}`] || `https://i.pravatar.cc/100?u=${i}`
+      ),
+    [siteConfigs]
+  );
 
   const APP_URL =
     (typeof window !== 'undefined' && window.location?.origin) ||
@@ -55,6 +87,10 @@ export default function FreeGuide() {
     }
   };
 
+  const pinDescription =
+    siteConfigs.free_guide_pinterest_description ||
+    'Free Pinterest Growth Guide by The Aesthetic Edit';
+
   return (
     <div className="min-h-screen bg-surface relative overflow-hidden">
       <SEOMeta 
@@ -74,23 +110,24 @@ export default function FreeGuide() {
           className="space-y-10"
         >
           <div className="space-y-6">
-            <span className="font-label text-xs uppercase tracking-[0.3em] text-primary font-bold">Free Resource</span>
+            <span className="font-label text-xs uppercase tracking-[0.3em] text-primary font-bold">
+              {siteConfigs.free_guide_kicker || 'Free Resource'}
+            </span>
             <h1 className="text-5xl md:text-7xl font-headline font-bold leading-tight text-on-surface">
-              Get Your Free <br />
-              <span className="italic font-normal text-primary">Pinterest Growth</span> Guide
+              {siteConfigs.free_guide_title_line1 || 'Get Your Free'} <br />
+              <span className="italic font-normal text-primary">
+                {siteConfigs.free_guide_title_emphasis || 'Pinterest Growth'}
+              </span>{' '}
+              {siteConfigs.free_guide_title_suffix || 'Guide'}
             </h1>
             <p className="text-xl text-on-surface-variant font-serif italic leading-relaxed">
-              Unlock the secrets to building a high-converting aesthetic brand on Pinterest. From visual storytelling to SEO optimization.
+              {siteConfigs.free_guide_subtitle ||
+                'Unlock the secrets to building a high-converting aesthetic brand on Pinterest. From visual storytelling to SEO optimization.'}
             </p>
           </div>
 
           <div className="space-y-6">
-            {[
-              'The "Aesthetic First" strategy for viral pins',
-              'How to optimize your profile for SEO discovery',
-              '3 templates for high-converting pin designs',
-              'The daily workflow for consistent growth'
-            ].map((item, i) => (
+            {bulletItems.map((item, i) => (
               <div key={i} className="flex items-center gap-4">
                 <div className="w-6 h-6 rounded-full bg-accent-blush flex items-center justify-center text-primary">
                   <CheckCircle2 size={16} />
@@ -100,28 +137,37 @@ export default function FreeGuide() {
             ))}
           </div>
 
-          <div className="pt-8 flex items-center gap-12 border-t border-outline-variant/30">
+          <div className="pt-8 flex flex-wrap items-center gap-8 md:gap-12 border-t border-outline-variant/30">
             <div className="flex flex-col">
-              <span className="text-3xl font-headline font-bold text-on-surface">12k+</span>
-              <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Downloads</span>
+              <span className="text-3xl font-headline font-bold text-on-surface">
+                {siteConfigs.free_guide_stat_number || '12k+'}
+              </span>
+              <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">
+                {siteConfigs.free_guide_stat_label || 'Downloads'}
+              </span>
             </div>
             <div className="flex flex-col">
               <div className="flex gap-1 text-accent-peach">
                 {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="currentColor" />)}
               </div>
-              <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mt-1 font-bold">4.9/5 Rating</span>
+              <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mt-1 font-bold">
+                {siteConfigs.free_guide_stat_rating || '4.9/5 Rating'}
+              </span>
             </div>
             <div className="flex items-center -space-x-3">
-              {[1, 2, 3, 4].map(i => (
+              {proofAvatars.map((src, idx) => (
                 <img 
-                  key={i} 
-                  src={`https://i.pravatar.cc/100?u=${i}`} 
+                  key={idx} 
+                  src={src}
                   loading="lazy"
+                  alt=""
                   className="w-10 h-10 rounded-full border-2 border-white shadow-sm bg-surface-container" 
                   referrerPolicy="no-referrer" 
                 />
               ))}
-              <div className="w-10 h-10 rounded-full bg-accent-blush text-primary flex items-center justify-center text-[10px] font-bold border-2 border-white shadow-sm">+8k</div>
+              <div className="w-10 h-10 rounded-full bg-accent-blush text-primary flex items-center justify-center text-[10px] font-bold border-2 border-white shadow-sm">
+                {siteConfigs.free_guide_social_bubble || '+8k'}
+              </div>
             </div>
           </div>
         </motion.div>
@@ -137,13 +183,19 @@ export default function FreeGuide() {
           {!submitted ? (
             <div className="space-y-8 relative z-10">
               <div className="text-center space-y-2">
-                <h2 className="text-3xl font-headline font-bold text-on-surface">Download the Guide</h2>
-                <p className="text-on-surface-variant font-body">Enter your details and we'll send it straight to your inbox.</p>
+                <h2 className="text-3xl font-headline font-bold text-on-surface">
+                  {siteConfigs.free_guide_form_title || 'Download the Guide'}
+                </h2>
+                <p className="text-on-surface-variant font-body">
+                  {siteConfigs.free_guide_form_subtitle || "Enter your details and we'll send it straight to your inbox."}
+                </p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6" noValidate>
                 <div className="space-y-2">
-                  <label className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold ml-1">First Name</label>
+                  <label className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold ml-1">
+                    {siteConfigs.free_guide_name_label || 'First Name'}
+                  </label>
                   <input 
                     type="text" 
                     value={name}
@@ -151,13 +203,15 @@ export default function FreeGuide() {
                       setName(e.target.value);
                       if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
                     }}
-                    placeholder="Elena"
+                    placeholder={siteConfigs.free_guide_name_ph || 'Elena'}
                     className={`w-full px-6 py-4 rounded-2xl bg-surface-container/50 border ${errors.name ? 'border-red-400' : 'border-outline-variant/30'} focus:outline-none focus:border-primary transition-all font-body text-on-surface`}
                   />
                   {errors.name && <p className="text-[10px] text-red-400 font-label uppercase tracking-widest ml-1">{errors.name}</p>}
                 </div>
                 <div className="space-y-2">
-                  <label className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold ml-1">Email Address</label>
+                  <label className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold ml-1">
+                    {siteConfigs.free_guide_email_label || 'Email Address'}
+                  </label>
                   <input 
                     type="email" 
                     value={email}
@@ -165,7 +219,7 @@ export default function FreeGuide() {
                       setEmail(e.target.value);
                       if (errors.email) setErrors(prev => ({ ...prev, email: undefined }));
                     }}
-                    placeholder="elena@example.com"
+                    placeholder={siteConfigs.free_guide_email_ph || 'elena@example.com'}
                     className={`w-full px-6 py-4 rounded-2xl bg-surface-container/50 border ${errors.email ? 'border-red-400' : 'border-outline-variant/30'} focus:outline-none focus:border-primary transition-all font-body text-on-surface`}
                   />
                   {errors.email && <p className="text-[10px] text-red-400 font-label uppercase tracking-widest ml-1">{errors.email}</p>}
@@ -178,18 +232,19 @@ export default function FreeGuide() {
                   {isLoading ? (
                     <>
                       <Loader2 size={18} className="animate-spin" />
-                      Sending...
+                      {siteConfigs.free_guide_submit_loading || 'Sending...'}
                     </>
                   ) : (
                     <>
-                      Get Instant Access <Download size={18} />
+                      {siteConfigs.free_guide_submit || 'Get Instant Access'} <Download size={18} />
                     </>
                   )}
                 </button>
               </form>
 
               <p className="text-center text-[10px] font-label uppercase tracking-widest text-on-surface-variant font-bold">
-                By signing up, you agree to our privacy policy. No spam, ever.
+                {siteConfigs.free_guide_disclaimer ||
+                  'By signing up, you agree to our privacy policy. No spam, ever.'}
               </p>
             </div>
           ) : (
@@ -208,9 +263,12 @@ export default function FreeGuide() {
               </motion.div>
               
               <div className="space-y-4">
-                <h2 className="text-4xl font-headline font-bold text-on-surface">Your guide is on its way! ✨</h2>
+                <h2 className="text-4xl font-headline font-bold text-on-surface">
+                  {siteConfigs.free_guide_success_title || 'Your guide is on its way! ✨'}
+                </h2>
                 <p className="text-on-surface-variant font-body leading-relaxed max-w-sm mx-auto">
-                  Check your inbox for an email from Anjali. In the meantime, explore the shop or read the journal.
+                  {siteConfigs.free_guide_success_body ||
+                    'Check your inbox for an email from Anjali. In the meantime, explore the shop or read the journal.'}
                 </p>
               </div>
 
@@ -219,25 +277,27 @@ export default function FreeGuide() {
                   to="/shop" 
                   className="bg-primary text-white py-4 rounded-2xl font-label text-sm uppercase tracking-widest font-bold hover:bg-primary-hover transition-all shadow-xl shadow-primary/20"
                 >
-                  Shop the Aesthetic
+                  {siteConfigs.free_guide_success_shop || 'Shop the Aesthetic'}
                 </Link>
                 <Link 
                   to="/blog" 
                   className="border-2 border-primary text-primary py-4 rounded-2xl font-label text-sm uppercase tracking-widest font-bold hover:bg-accent-blush transition-all"
                 >
-                  Read the Journal
+                  {siteConfigs.free_guide_success_journal || 'Read the Journal'}
                 </Link>
               </div>
 
               <div className="pt-8 border-t border-outline-variant/30">
-                <p className="text-sm text-on-surface-variant font-serif italic mb-4">Love this guide? Share it on Pinterest</p>
+                <p className="text-sm text-on-surface-variant font-serif italic mb-4">
+                  {siteConfigs.free_guide_share_blurb || 'Love this guide? Share it on Pinterest'}
+                </p>
                 <a 
-                  href={`https://pinterest.com/pin/create/button/?url=${encodeURIComponent(APP_URL + '/free-guide')}&description=${encodeURIComponent('Free Pinterest Growth Guide by The Aesthetic Edit')}`}
+                  href={`https://pinterest.com/pin/create/button/?url=${encodeURIComponent(APP_URL + '/free-guide')}&description=${encodeURIComponent(pinDescription)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-primary font-label text-[10px] uppercase tracking-widest font-bold group"
                 >
-                  Share to Pinterest
+                  {siteConfigs.free_guide_share_pinterest || 'Share to Pinterest'}
                   <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
                 </a>
               </div>

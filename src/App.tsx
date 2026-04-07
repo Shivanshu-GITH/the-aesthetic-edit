@@ -52,9 +52,9 @@ function AppContent() {
   const isAdminPage = location.pathname.startsWith('/admin');
 
   return (
-    <div className="min-h-screen flex flex-col noise-overlay">
+    <div className="min-h-screen flex flex-col noise-overlay w-full min-w-0 overflow-x-clip">
       {!isAdminPage && <Navbar />}
-      <main className="flex-1">
+      <main className="flex-1 w-full min-w-0">
         <Suspense fallback={<div className="min-h-screen bg-surface" />}>
           <Routes>
             <Route path="/" element={<Home />} />

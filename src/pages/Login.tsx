@@ -31,7 +31,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center px-6 pt-20 pb-32">
+    <div className="relative min-h-screen bg-surface flex items-center justify-center px-4 sm:px-6 pt-20 pb-32 overflow-x-clip">
       <SEOMeta 
         title="Login"
         description="Login to your account on The Aesthetic Edit to manage your wishlist and curated finds."

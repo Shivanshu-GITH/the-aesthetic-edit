@@ -46,10 +46,10 @@ async function startServer() {
       directives: { 
         defaultSrc: ["'self'"], 
         scriptSrc: ["'self'", "'unsafe-inline'"], 
-        styleSrc: ["'self'", "'unsafe-inline'"], 
-        imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https://res.cloudinary.com", "https://*.amazonaws.com"], 
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], 
+        imgSrc: ["'self'", "data:", "blob:", "https://images.unsplash.com", "https://res.cloudinary.com", "https://*.amazonaws.com", "https://i.pravatar.cc", "https://lh3.googleusercontent.com"], 
         connectSrc: ["'self'", "https://ipapi.co", "https://open.er-api.com"], 
-        fontSrc: ["'self'"], 
+        fontSrc: ["'self'", "https://fonts.gstatic.com"], 
         objectSrc: ["'none'"], 
         upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null, 
       } 

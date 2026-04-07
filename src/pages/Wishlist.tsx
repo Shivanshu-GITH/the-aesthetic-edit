@@ -17,6 +17,16 @@ export default function Wishlist() {
   const [journals, setJournals] = useState<BlogPost[]>([]);
   const [activeTab, setActiveTab] = useState<WishlistTab>('products');
   const [isLoading, setIsLoading] = useState(true);
+  const [siteConfigs, setSiteConfigs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch('/api/home-shop/config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setSiteConfigs(data.data);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const fetchWishlistItems = async () => {
@@ -113,7 +123,7 @@ export default function Wishlist() {
                 activeTab === 'products' ? "bg-white text-primary shadow-sm" : "text-outline hover:text-primary"
               )}
             >
-              Products ({products.length})
+              {(siteConfigs.wishlist_tab_products || 'Products')} ({products.length})
             </button>
             <button 
               onClick={() => setActiveTab('journals')}
@@ -122,33 +132,41 @@ export default function Wishlist() {
                 activeTab === 'journals' ? "bg-white text-primary shadow-sm" : "text-outline hover:text-primary"
               )}
             >
-              Journals ({journals.length})
+              {(siteConfigs.wishlist_tab_journals || 'Journals')} ({journals.length})
             </button>
           </div>
 
           <div className="text-center space-y-6">
             <div className="text-6xl text-primary/30">♡</div>
             <h2 className="text-3xl font-headline font-bold text-on-surface">
-              {user ? `Your ${activeTab} list is empty` : 'Join us to save your wishlist'}
+              {user
+                ? (activeTab === 'products'
+                    ? (siteConfigs.wishlist_empty_products_title || 'Your products list is empty')
+                    : (siteConfigs.wishlist_empty_journals_title || 'Your journals list is empty'))
+                : (siteConfigs.wishlist_empty_guest_title || 'Join us to save your wishlist')}
             </h2>
             <p className="font-serif italic text-on-surface-variant max-w-md mx-auto">
               {user 
-                ? `Save ${activeTab} that speak to you while browsing. They'll be waiting for you here.`
-                : "Create an account or login to start saving your favorite aesthetic finds across devices."}
+                ? (siteConfigs.wishlist_empty_logged_subtitle ||
+                    'Save items that speak to you while browsing. They’ll be waiting for you here.')
+                : (siteConfigs.wishlist_empty_guest_subtitle ||
+                    'Create an account or login to start saving your favorite aesthetic finds across devices.')}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link 
                 to={activeTab === 'products' ? "/shop" : "/blog"} 
                 className="inline-block bg-primary text-on-primary px-8 py-3 rounded-xl font-label text-xs uppercase tracking-widest hover:bg-primary-hover transition-all"
               >
-                Browse {activeTab === 'products' ? 'the Shop' : 'the Journal'}
+                {activeTab === 'products'
+                  ? (siteConfigs.wishlist_browse_shop || 'Browse the Shop')
+                  : (siteConfigs.wishlist_browse_journal || 'Browse the Journal')}
               </Link>
               {!user && (
                 <Link 
                   to="/login" 
                   className="inline-block border-2 border-primary text-primary px-8 py-3 rounded-xl font-label text-xs uppercase tracking-widest hover:bg-accent-blush transition-all"
                 >
-                  Login / Sign Up
+                  {siteConfigs.wishlist_login_cta || 'Login / Sign Up'}
                 </Link>
               )}
             </div>
@@ -168,7 +186,9 @@ export default function Wishlist() {
       
       <div className="flex flex-col items-center text-center border-b border-outline-variant/30 pb-12 space-y-8 relative">
         <div className="space-y-6 w-full flex flex-col items-center">
-          <h1 className="text-4xl md:text-5xl font-headline font-bold text-on-surface">Your Wishlist</h1>
+          <h1 className="text-4xl md:text-5xl font-headline font-bold text-on-surface">
+            {siteConfigs.wishlist_page_title || 'Your Wishlist'}
+          </h1>
           
           {/* Tabs */}
           <div className="flex bg-surface-container/50 p-1.5 rounded-2xl border border-outline-variant/30 w-fit mx-auto">
@@ -179,7 +199,7 @@ export default function Wishlist() {
                 activeTab === 'products' ? "bg-white text-primary shadow-sm" : "text-outline hover:text-primary"
               )}
             >
-              Products ({products.length})
+              {(siteConfigs.wishlist_tab_products || 'Products')} ({products.length})
             </button>
             <button 
               onClick={() => setActiveTab('journals')}
@@ -188,7 +208,7 @@ export default function Wishlist() {
                 activeTab === 'journals' ? "bg-white text-primary shadow-sm" : "text-outline hover:text-primary"
               )}
             >
-              Journals ({journals.length})
+              {(siteConfigs.wishlist_tab_journals || 'Journals')} ({journals.length})
             </button>
           </div>
         </div>

@@ -17,8 +17,18 @@ export default function ProductDetail() {
   const [showAllRelated, setShowAllRelated] = useState(false);
   const [isShared, setIsShared] = useState(false);
   const [displayPrice, setDisplayPrice] = useState('');
+  const [siteConfigs, setSiteConfigs] = useState<Record<string, string>>({});
   
   const { product, related: autoRelated, loading, error } = useProduct(id);
+
+  useEffect(() => {
+    fetch('/api/home-shop/config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setSiteConfigs(data.data);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => { 
     if (product) {
@@ -80,9 +90,11 @@ export default function ProductDetail() {
 
   if (error || !product) return (
     <div className="p-16 md:p-24 text-center space-y-6">
-      <h2 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">Product not found</h2>
+      <h2 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">
+        {siteConfigs.product_not_found_title || 'Product not found'}
+      </h2>
       <Link to="/shop" className="text-primary font-label text-xs uppercase tracking-widest font-bold border-b border-primary">
-        Back to Shop
+        {siteConfigs.product_not_found_shop_link || 'Back to Shop'}
       </Link>
     </div>
   );
@@ -119,7 +131,7 @@ export default function ProductDetail() {
 
       <div className="max-w-7xl mx-auto px-6 pt-8 md:pt-12 relative z-10">
         <Link to="/shop" className="inline-flex items-center gap-2 text-on-surface-variant hover:text-primary transition-all font-label text-[10px] uppercase tracking-widest font-bold mb-8 md:mb-12 group">
-          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> Back to Shop
+          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> {siteConfigs.product_back_to_shop || 'Back to Shop'}
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-20 items-start">
@@ -177,7 +189,9 @@ export default function ProductDetail() {
               <div className="relative">
                 <div className="absolute -left-4 top-0 bottom-0 w-1 bg-accent-blush rounded-full"></div>
                 <p className="text-base md:text-xl text-on-surface-variant leading-relaxed font-serif italic pl-4">
-                  {product.description || "This curated piece is designed for those who appreciate the finer details of intentional living. Crafted with quality materials and a timeless aesthetic, it seamlessly blends into any modern space or wardrobe."}
+                  {product.description ||
+                    siteConfigs.product_default_description ||
+                    'This curated piece is designed for those who appreciate the finer details of intentional living. Crafted with quality materials and a timeless aesthetic, it seamlessly blends into any modern space or wardrobe.'}
                 </p>
               </div>
               
@@ -197,7 +211,8 @@ export default function ProductDetail() {
                   onClick={handleAffiliateClick}
                   className="flex-1 bg-primary text-white py-5 md:py-6 rounded-2xl font-label font-bold uppercase tracking-[0.2em] hover:bg-primary-hover transition-all shadow-[0_20px_40px_-12px_rgba(var(--color-primary-rgb),0.3)] flex items-center justify-center gap-3 text-xs md:text-sm group"
                 >
-                  <ShoppingBag size={20} className="group-hover:scale-110 transition-transform" /> View on Retailer Site
+                  <ShoppingBag size={20} className="group-hover:scale-110 transition-transform" />{' '}
+                  {siteConfigs.product_shop_retailer_cta || 'View on Retailer Site'}
                 </button>
                 
                 <button 
@@ -214,7 +229,8 @@ export default function ProductDetail() {
                 </button>
               </div>
               <p className="text-[9px] md:text-[10px] text-center text-on-surface-variant uppercase tracking-[0.1em] font-bold opacity-60 italic">
-                * This is an affiliate link. I may earn a small commission at no extra cost to you.
+                {siteConfigs.product_affiliate_disclaimer ||
+                  '* This is an affiliate link. I may earn a small commission at no extra cost to you.'}
               </p>
             </div>
 
@@ -223,19 +239,19 @@ export default function ProductDetail() {
                 <div className="w-12 h-12 rounded-2xl bg-accent-blush/30 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500">
                   <Truck size={22} />
                 </div>
-                <span className="text-[9px] md:text-[11px] font-label uppercase tracking-widest font-bold text-on-surface">Fast Shipping</span>
+                <span className="text-[9px] md:text-[11px] font-label uppercase tracking-widest font-bold text-on-surface">{siteConfigs.product_trust_shipping || 'Fast Shipping'}</span>
               </div>
               <div className="flex flex-col items-center text-center space-y-3 group">
                 <div className="w-12 h-12 rounded-2xl bg-accent-blush/30 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500">
                   <ShieldCheck size={22} />
                 </div>
-                <span className="text-[9px] md:text-[11px] font-label uppercase tracking-widest font-bold text-on-surface">Quality Assured</span>
+                <span className="text-[9px] md:text-[11px] font-label uppercase tracking-widest font-bold text-on-surface">{siteConfigs.product_trust_quality || 'Quality Assured'}</span>
               </div>
               <div className="flex flex-col items-center text-center space-y-3 group">
                 <div className="w-12 h-12 rounded-2xl bg-accent-blush/30 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500">
                   <ExternalLink size={22} />
                 </div>
-                <span className="text-[9px] md:text-[11px] font-label uppercase tracking-widest font-bold text-on-surface">Trusted Retailer</span>
+                <span className="text-[9px] md:text-[11px] font-label uppercase tracking-widest font-bold text-on-surface">{siteConfigs.product_trust_retailer || 'Trusted Retailer'}</span>
               </div>
             </div>
           </motion.div>
@@ -248,21 +264,23 @@ export default function ProductDetail() {
             <div className="flex items-center gap-3 text-primary">
               <Sparkles size={20} fill="currentColor" />
               <span className="font-label text-xs uppercase tracking-[0.4em] font-bold">
-                {product.sectionSubheading || 'Curated Picks'}
+                {product.sectionSubheading || siteConfigs.product_related_subheading_default || 'Curated Picks'}
               </span>
             </div>
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
               <div className="space-y-4">
                 <h2 className="text-4xl md:text-6xl font-headline font-bold text-on-surface leading-tight">
-                  {product.sectionHeading || 'Complete the Look'}
+                  {product.sectionHeading || siteConfigs.product_related_heading_default || 'Complete the Look'}
                 </h2>
                 <p className="text-base md:text-lg text-on-surface-variant font-serif italic">
-                  {product.sectionDescription || 'Hand-selected pieces that perfectly complement your current aesthetic. Curated for intentional styling.'}
+                  {product.sectionDescription ||
+                    siteConfigs.product_related_description_default ||
+                    'Hand-selected pieces that perfectly complement your current aesthetic. Curated for intentional styling.'}
                 </p>
               </div>
               <Link to="/shop" className="group flex items-center gap-3 text-primary font-label text-xs uppercase tracking-[0.2em] font-bold whitespace-nowrap">
                 <span className="border-b-2 border-primary/20 group-hover:border-primary transition-all pb-1">
-                  {product.sectionCtaText || 'View All Collection'}
+                  {product.sectionCtaText || siteConfigs.product_related_cta_default || 'View All Collection'}
                 </span>
                 <div className="w-8 h-8 rounded-full bg-accent-blush flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
                   <ArrowLeft size={14} className="rotate-180" />
@@ -296,7 +314,7 @@ export default function ProductDetail() {
                 onClick={() => setShowAllRelated(true)}
                 className="group relative inline-flex items-center gap-4 px-10 py-5 rounded-2xl bg-white border-2 border-outline-variant/30 text-primary font-label text-xs uppercase tracking-[0.3em] font-bold hover:border-primary hover:shadow-2xl hover:shadow-primary/10 transition-all"
               >
-                <span className="relative z-10">Discover More Pieces</span>
+                <span className="relative z-10">{siteConfigs.product_related_discover_more || 'Discover More Pieces'}</span>
                 <RefreshCw size={16} className="group-hover:rotate-180 transition-transform duration-700" />
               </button>
             </div>

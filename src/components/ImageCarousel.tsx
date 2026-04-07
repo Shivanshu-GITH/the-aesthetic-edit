@@ -32,7 +32,7 @@ export default function ImageCarousel({
 
   const slideVariants = {
     enter: (direction: number) => ({
-      x: direction > 0 ? 1000 : -1000,
+      x: direction > 0 ? '100%' : '-100%',
       opacity: 0
     }),
     center: {
@@ -42,7 +42,7 @@ export default function ImageCarousel({
     },
     exit: (direction: number) => ({
       zIndex: 0,
-      x: direction < 0 ? 1000 : -1000,
+      x: direction < 0 ? '100%' : '-100%',
       opacity: 0
     })
   };
@@ -61,7 +61,7 @@ export default function ImageCarousel({
   if (images.length === 1) {
     return (
       <div className={`relative overflow-hidden rounded-4xl bg-surface-container ${aspectRatio} ${className}`}>
-        <img src={images[0]} alt="Product" className="w-full h-full object-cover" />
+        <img src={images[0]} alt="" className="w-full h-full max-w-full object-cover" />
       </div>
     );
   }
@@ -87,7 +87,9 @@ export default function ImageCarousel({
 
       {/* Controls */}
       <button
-        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm text-primary flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-white"
+        type="button"
+        aria-label="Previous image"
+        className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 min-h-11 min-w-11 h-11 w-11 rounded-full bg-white/80 backdrop-blur-sm text-primary flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 hover:bg-white touch-manipulation"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -97,7 +99,9 @@ export default function ImageCarousel({
         <ChevronLeft size={20} />
       </button>
       <button
-        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm text-primary flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-white"
+        type="button"
+        aria-label="Next image"
+        className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 min-h-11 min-w-11 h-11 w-11 rounded-full bg-white/80 backdrop-blur-sm text-primary flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 hover:bg-white touch-manipulation"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -111,7 +115,9 @@ export default function ImageCarousel({
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
         {images.map((_, index) => (
           <button
+            type="button"
             key={index}
+            aria-label={`Go to image ${index + 1}`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

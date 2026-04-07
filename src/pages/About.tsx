@@ -156,13 +156,24 @@ export default function About() {
             </p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
               <div className="flex -space-x-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="w-10 h-10 md:w-12 md:h-12 rounded-full border-4 border-white overflow-hidden shadow-sm">
-                    <img src={`https://i.pravatar.cc/150?u=${i+10}`} alt="Partner" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                {[
+                  siteConfigs.about_collab_avatar_1,
+                  siteConfigs.about_collab_avatar_2,
+                  siteConfigs.about_collab_avatar_3,
+                ].map((src, i) => (
+                  <div key={i} className="w-10 h-10 md:w-12 md:h-12 rounded-full border-4 border-white overflow-hidden shadow-sm bg-surface-container">
+                    <img
+                      src={src || `https://i.pravatar.cc/150?u=${i + 10}`}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
                   </div>
                 ))}
               </div>
-              <span className="font-label text-[10px] uppercase tracking-widest font-bold text-primary">50+ Successful Brand Collabs</span>
+              <span className="font-label text-[10px] uppercase tracking-widest font-bold text-primary">
+                {siteConfigs.about_collab_stats_line || '50+ Successful Brand Collabs'}
+              </span>
             </div>
           </div>
           <div className="bg-white p-8 md:p-16 lg:p-24">
@@ -175,49 +186,57 @@ export default function About() {
                 <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-accent-blush flex items-center justify-center text-primary">
                   <CheckCircle2 size={32} />
                 </div>
-                <h3 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">Thank You!</h3>
+                <h3 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">
+                  {siteConfigs.about_contact_thank_title || 'Thank You!'}
+                </h3>
                 <p className="text-sm md:text-base text-on-surface-variant font-serif italic">
-                  Your message has been received. I’ll be in touch soon.
+                  {siteConfigs.about_contact_thank_message || 'Your message has been received. I’ll be in touch soon.'}
                 </p>
                 <button 
                   onClick={() => setIsSuccess(false)}
                   className="text-primary font-label text-[10px] uppercase tracking-widest font-bold border-b border-primary pt-4"
                 >
-                  Send Another Message
+                  {siteConfigs.about_contact_send_another || 'Send Another Message'}
                 </button>
               </motion.div>
             ) : (
               <form className="space-y-8 md:space-y-10" onSubmit={handleSubmit}>
                 <div className="space-y-2">
-                  <label className="block font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-bold">Your Name</label>
+                  <label className="block font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-bold">
+                    {siteConfigs.about_contact_name_label || 'Your Name'}
+                  </label>
                   <input 
                     type="text" 
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="E.g. Julianne Moore" 
+                    placeholder={siteConfigs.about_contact_name_ph || 'E.g. Julianne Moore'}
                     className="w-full border-b border-outline-variant focus:outline-none focus:border-primary px-4 md:px-6 py-3 transition-all placeholder:text-outline/30 bg-transparent border-t-0 border-l-0 border-r-0 text-sm" 
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-bold">Email Address</label>
+                  <label className="block font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-bold">
+                    {siteConfigs.about_contact_email_label || 'Email Address'}
+                  </label>
                   <input 
                     type="email" 
                     required
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="hello@example.com" 
+                    placeholder={siteConfigs.about_contact_email_ph || 'hello@example.com'}
                     className="w-full border-b border-outline-variant focus:outline-none focus:border-primary px-4 md:px-6 py-3 transition-all placeholder:text-outline/30 bg-transparent border-t-0 border-l-0 border-r-0 text-sm" 
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-bold">Tell me about your project</label>
+                  <label className="block font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-bold">
+                    {siteConfigs.about_contact_message_label || 'Tell me about your project'}
+                  </label>
                   <textarea 
                     rows={3} 
                     required
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    placeholder="I'd love to partner on..." 
+                    placeholder={siteConfigs.about_contact_message_ph || "I'd love to partner on..."}
                     className="w-full border-b border-outline-variant focus:outline-none focus:border-primary px-4 md:px-6 py-3 transition-all placeholder:text-outline/30 resize-none bg-transparent border-t-0 border-l-0 border-r-0 text-sm" 
                   />
                 </div>
@@ -227,10 +246,10 @@ export default function About() {
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="animate-spin" size={20} /> Sending...
+                      <Loader2 className="animate-spin" size={20} /> {siteConfigs.about_contact_submit_loading || 'Sending...'}
                     </>
                   ) : (
-                    'Send Message'
+                    siteConfigs.about_contact_submit || 'Send Message'
                   )}
                 </button>
               </form>

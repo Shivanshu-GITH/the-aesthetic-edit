@@ -42,9 +42,9 @@ export default function BlogCategory() {
 
   if (!category || error) return (
     <div className="p-24 text-center space-y-6">
-      <h2 className="text-3xl font-headline font-bold text-on-surface">Category not found</h2>
+      <h2 className="text-3xl font-headline font-bold text-on-surface">{siteConfigs.blog_category_not_found_title || 'Category not found'}</h2>
       <Link to="/blog" className="text-primary font-label text-xs uppercase tracking-widest font-bold border-b border-primary">
-        Back to Blog
+        {siteConfigs.blog_category_back_link || 'Back to Blog'}
       </Link>
     </div>
   );
@@ -64,7 +64,7 @@ export default function BlogCategory() {
           animate={{ opacity: 1 }}
           className="font-label text-xs uppercase tracking-[0.3em] text-primary font-bold relative z-10"
         >
-          Blog Category
+          {siteConfigs.blog_category_kicker || 'Blog Category'}
         </motion.div>
         <h1 className="text-5xl md:text-7xl font-headline font-bold leading-tight text-on-surface relative z-10">
           {category.title}
@@ -78,10 +78,10 @@ export default function BlogCategory() {
         {posts.length === 0 && (
           <div className="text-center py-24 space-y-4">
             <p className="font-serif italic text-2xl text-on-surface-variant">
-              No posts in this category yet — check back soon.
+              {siteConfigs.blog_category_empty_message || 'No posts in this category yet — check back soon.'}
             </p>
             <Link to="/blog" className="text-primary font-label text-xs uppercase tracking-widest font-bold border-b border-primary">
-              Browse All Posts
+              {siteConfigs.blog_category_browse_all || 'Browse All Posts'}
             </Link>
           </div>
         )}
@@ -129,7 +129,7 @@ export default function BlogCategory() {
                   to={`/blog/${categorySlug}/${post.slug}`}
                   className="inline-flex items-center gap-2 font-label text-[10px] uppercase tracking-widest font-bold text-primary group-hover:gap-4 transition-all"
                 >
-                  Read More <ArrowRight size={14} />
+                  {siteConfigs.blog_category_read_more || 'Read More'} <ArrowRight size={14} />
                 </Link>
               </div>
             </motion.article>

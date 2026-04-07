@@ -142,11 +142,11 @@ export default function Shop() {
 
   const SearchCard = () => (
     <div className="bg-white p-6 rounded-4xl border border-outline-variant/50 shadow-sm space-y-4">
-      <h3 className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-outline">Search</h3>
+      <h3 className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-outline">{siteConfigs.shop_search_card_title || 'Search'}</h3>
       <div className="relative">
         <input 
           type="text" 
-          placeholder="Find something..."
+          placeholder={siteConfigs.shop_search_placeholder || 'Find something...'}
           value={localSearchQuery}
           onChange={(e) => setLocalSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-3 rounded-xl bg-surface border border-outline-variant/30 focus:outline-none focus:border-primary transition-all font-body text-sm"
@@ -163,10 +163,10 @@ export default function Shop() {
 
       {/* Quick Filters Card */}
       <div className="bg-white p-6 rounded-4xl border border-outline-variant/50 shadow-sm space-y-4">
-        <h3 className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-outline">Quick Filters</h3>
+        <h3 className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-outline">{siteConfigs.shop_quick_filters_title || 'Quick Filters'}</h3>
         <div className="space-y-2">
           {QUICK_FILTERS.map(q => (
-            <button 
+            <button type="button"
               key={q.name}
               onClick={() => {
                 const updates: Record<string, string | null> = {
@@ -199,7 +199,7 @@ export default function Shop() {
         </div>
         
         <div className="space-y-2">
-          <button 
+          <button type="button"
             onClick={() => {
               updateFilters({ category: 'All' });
               setIsMobileFilterOpen(false);
@@ -209,7 +209,7 @@ export default function Shop() {
               selectedCategory === 'All' ? "bg-accent-blush text-primary" : "text-on-surface hover:bg-accent-blush/50"
             )}
           >
-            <span className="font-label text-[11px] uppercase tracking-widest font-bold">All Products</span>
+            <span className="font-label text-[11px] uppercase tracking-widest font-bold">{siteConfigs.shop_all_products_label || 'All Products'}</span>
           </button>
 
           {Array.isArray(shopCategories) && shopCategories.map(cat => {
@@ -218,7 +218,7 @@ export default function Shop() {
             return (
               <div key={cat.id} className="space-y-1">
                 <div className="flex items-center gap-1">
-                  <button 
+                  <button type="button"
                     onClick={() => {
                       updateFilters({ category: cat.title });
                       setIsMobileFilterOpen(false);
@@ -232,7 +232,7 @@ export default function Shop() {
                     <span className="font-label text-[11px] uppercase tracking-widest font-bold flex-1">{cat.title}</span>
                   </button>
                   {subCats.length > 0 && (
-                    <button 
+                    <button type="button"
                       onClick={() => toggleCategory(cat.title)}
                       className="p-3 hover:bg-accent-blush/50 rounded-xl transition-colors text-outline"
                     >
@@ -278,12 +278,12 @@ export default function Shop() {
       {/* Vibes Card */}
       <div className="bg-white p-6 rounded-4xl border border-outline-variant/50 shadow-sm space-y-6">
         <div className="flex items-center justify-between border-b border-outline-variant/30 pb-4">
-          <h3 className="font-headline font-bold text-lg text-on-surface">Find Your Vibe</h3>
+          <h3 className="font-headline font-bold text-lg text-on-surface">{siteConfigs.shop_find_vibe_title || 'Find Your Vibe'}</h3>
           <Sparkles size={16} className="text-outline" />
         </div>
         
         <div className="flex flex-wrap gap-2">
-          <button 
+          <button type="button"
             onClick={() => {
               updateFilters({ vibe: 'All' });
               setIsMobileFilterOpen(false);
@@ -295,10 +295,10 @@ export default function Shop() {
                 : "bg-surface text-outline border-outline-variant/30 hover:border-primary hover:text-primary"
             )}
           >
-            All
+            {siteConfigs.shop_vibe_all_label || 'All'}
           </button>
           {VIBES.map(vibe => (
-            <button 
+            <button type="button"
               key={vibe}
               onClick={() => {
                 updateFilters({ vibe });
@@ -327,11 +327,11 @@ export default function Shop() {
         type="website"
       />
       {/* Header */}
-      <header className="max-w-7xl mx-auto px-6 pt-16 md:pt-24 pb-12 md:pb-16 text-center space-y-8 relative overflow-hidden">
+      <header className="max-w-7xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 md:pt-24 pb-10 sm:pb-12 md:pb-16 text-center space-y-6 sm:space-y-8 relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-linear-to-b from-accent-blush/20 to-transparent pointer-events-none"></div>
         <div className="space-y-6 max-w-4xl mx-auto relative z-10">
-          <span className="font-label text-xs uppercase tracking-[0.3em] text-primary font-bold">Curated Shopping</span>
-          <h1 className="text-4xl md:text-5xl lg:text-7xl font-headline font-bold leading-tight text-on-surface">
+          <span className="font-label text-xs uppercase tracking-[0.3em] text-primary font-bold">{siteConfigs.shop_hero_kicker || 'Curated Shopping'}</span>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-headline font-bold leading-tight text-on-surface px-1">
             {siteConfigs.shop_hero_title_line1 || 'The'} <span className="italic font-normal text-primary">{siteConfigs.shop_hero_title_line2 || 'Aesthetic Shop'}</span>
           </h1>
           <p className="text-base md:text-lg lg:text-xl text-on-surface-variant leading-relaxed font-serif italic max-w-2xl mx-auto">
@@ -340,17 +340,17 @@ export default function Shop() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 min-w-0">
         {/* Mobile Filter Toggle */}
-        <div className="lg:hidden mb-8 flex items-center justify-between bg-white p-4 rounded-2xl border border-outline-variant/30 shadow-sm sticky top-20 z-30">
-          <button 
+        <div className="lg:hidden mb-8 flex items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-outline-variant/30 shadow-sm sticky top-[calc(4.5rem+env(safe-area-inset-top,0px))] z-30">
+          <button type="button"
             onClick={() => setIsMobileFilterOpen(true)}
-            className="flex items-center gap-2 font-label text-xs uppercase tracking-widest font-bold text-primary"
+            className="flex items-center gap-2 min-h-11 min-w-11 font-label text-xs uppercase tracking-widest font-bold text-primary touch-manipulation -ml-2 pl-2"
           >
             <Filter size={16} /> Filters
           </button>
           <div className="text-[10px] font-label uppercase tracking-widest text-outline">
-            {products.length} Products
+            {(siteConfigs.shop_products_mobile_count || '{count} Products').replace(/\{count\}/g, String(products.length))}
           </div>
         </div>
 
@@ -374,12 +374,12 @@ export default function Shop() {
                   <Search size={32} />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">No matches found</h3>
+                  <h3 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">{siteConfigs.shop_no_matches_title || 'No matches found'}</h3>
                   <p className="text-on-surface-variant font-serif italic max-w-md mx-auto">
                     {siteConfigs.shop_empty_message || 'No products found matching your criteria.'}
                   </p>
                 </div>
-                <button 
+                <button type="button"
                   onClick={() => {
                     setLocalSearchQuery('');
                     updateFilters({ 
@@ -392,9 +392,9 @@ export default function Shop() {
                       trending: null
                     });
                   }}
-                  className="text-primary font-label text-[10px] uppercase tracking-widest font-bold border-b border-primary pb-1"
+                  className="min-h-11 text-primary font-label text-[10px] uppercase tracking-widest font-bold border-b border-primary pb-1 touch-manipulation shrink-0"
                 >
-                  Clear all filters
+                  {siteConfigs.shop_clear_filters_cta || 'Clear all filters'}
                 </button>
               </div>
             ) : (
@@ -408,20 +408,22 @@ export default function Shop() {
                 {meta && meta.totalPages > 1 && (
                   <div className="flex flex-col items-center gap-6 pt-16">
                     <div className="flex items-center gap-4">
-                      <button 
+                      <button type="button"
                         disabled={currentPage === 1}
                         onClick={() => updateFilters({ page: (currentPage - 1).toString() })}
-                        className="p-3 md:p-4 rounded-full border border-outline-variant/30 disabled:opacity-30 hover:bg-white hover:shadow-lg transition-all"
+                        aria-label="Previous page"
+                        className="min-h-11 min-w-11 inline-flex items-center justify-center p-3 md:p-4 rounded-full border border-outline-variant/30 disabled:opacity-30 hover:bg-white hover:shadow-lg transition-all touch-manipulation"
                       >
                         <ChevronLeft size={20} />
                       </button>
                       <span className="font-label text-xs uppercase tracking-[0.2em] font-bold">
                         {meta.page} / {meta.totalPages}
                       </span>
-                      <button 
+                      <button type="button"
                         disabled={currentPage === meta.totalPages}
                         onClick={() => updateFilters({ page: (currentPage + 1).toString() })}
-                        className="p-3 md:p-4 rounded-full border border-outline-variant/30 disabled:opacity-30 hover:bg-white hover:shadow-lg transition-all"
+                        aria-label="Next page"
+                        className="min-h-11 min-w-11 inline-flex items-center justify-center p-3 md:p-4 rounded-full border border-outline-variant/30 disabled:opacity-30 hover:bg-white hover:shadow-lg transition-all touch-manipulation"
                       >
                         <ChevronRight size={20} />
                       </button>
@@ -456,10 +458,11 @@ export default function Shop() {
               className="fixed right-0 top-0 h-full w-[85%] max-w-sm bg-surface z-70 lg:hidden overflow-y-auto p-6 shadow-2xl"
             >
               <div className="flex items-center justify-between mb-8 pb-4 border-b border-outline-variant/30">
-                <h2 className="text-2xl font-headline font-bold">Filters</h2>
-                <button 
+                <h2 className="text-2xl font-headline font-bold">{siteConfigs.shop_mobile_filters_title || 'Filters'}</h2>
+                <button type="button"
                   onClick={() => setIsMobileFilterOpen(false)}
-                  className="p-2 hover:bg-accent-blush rounded-full transition-colors"
+                  aria-label="Close filters"
+                  className="min-h-11 min-w-11 inline-flex items-center justify-center p-2 hover:bg-accent-blush rounded-full transition-colors touch-manipulation"
                 >
                   <X size={24} />
                 </button>

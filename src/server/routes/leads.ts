@@ -14,9 +14,9 @@ const leadLimit = rateLimit({
 }); 
  
 const leadSchema = z.object({ 
-  name: z.string().min(2), 
-  email: z.string().email(), 
-  source: z.string().optional() 
+  name: z.string().min(2).max(200), 
+  email: z.string().email().max(200), 
+  source: z.string().max(100).optional() 
 }); 
  
 router.post('/', leadLimit, async (req, res) => { 

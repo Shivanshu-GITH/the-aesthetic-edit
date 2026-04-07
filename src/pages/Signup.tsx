@@ -32,7 +32,7 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center px-6 pt-20 pb-32">
+    <div className="relative min-h-screen bg-surface flex items-center justify-center px-4 sm:px-6 pt-20 pb-32 overflow-x-clip">
       <SEOMeta 
         title="Join The Aesthetic Edit"
         description="Create an account on The Aesthetic Edit to start saving your favorite Pinterest-inspired finds."

@@ -130,7 +130,7 @@ export default function BlogHub() {
               </div>
               <div className="p-8 lg:p-16 flex flex-col justify-center space-y-6 md:space-y-8 bg-linear-to-br from-white to-accent-blush/10">
                 <div className="space-y-4">
-                  <span className="font-label text-[10px] md:text-xs uppercase tracking-[0.3em] text-primary font-bold">Featured Article</span>
+                  <span className="font-label text-[10px] md:text-xs uppercase tracking-[0.3em] text-primary font-bold">{siteConfigs.featured_article_label || 'Featured Article'}</span>
                   <h2 className="text-2xl md:text-4xl lg:text-5xl font-headline font-bold leading-tight text-on-surface group-hover:text-primary transition-colors">
                     {featuredPost.title}
                   </h2>
@@ -142,7 +142,7 @@ export default function BlogHub() {
                   to={`/blog/${featuredPost.categorySlug}/${featuredPost.slug}`}
                   className="inline-flex items-center gap-3 text-primary font-label text-xs md:text-sm uppercase tracking-widest font-bold group/link w-fit"
                 >
-                  Read Article
+                  {siteConfigs.journal_read_article_cta || 'Read Article'}
                   <ArrowRight size={18} className="transition-transform group-hover/link:translate-x-2" />
                 </Link>
               </div>
@@ -154,7 +154,7 @@ export default function BlogHub() {
       {/* Explore by Category */}
       <section className="max-w-7xl mx-auto px-6 space-y-10 md:space-y-12">
         <div className="text-center space-y-4">
-          <h2 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">Explore by Category</h2>
+          <h2 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">{siteConfigs.journal_explore_category_title || 'Explore by Category'}</h2>
           <div className="w-12 md:w-16 h-0.5 bg-accent-peach mx-auto"></div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
@@ -200,7 +200,7 @@ export default function BlogHub() {
           <div className="relative w-full max-w-xl">
             <input 
               type="text" 
-              placeholder="Search articles..."
+              placeholder={siteConfigs.journal_search_placeholder || 'Search articles...'}
               value={searchQuery}
               onChange={(e) => updateSearch(e.target.value)}
               className="w-full pl-12 pr-4 py-3.5 md:py-4 rounded-2xl bg-white border border-outline-variant/30 focus:outline-none focus:border-primary transition-all font-body text-sm shadow-sm"
@@ -262,7 +262,7 @@ export default function BlogHub() {
                     to={`/blog/${post.categorySlug}/${post.slug}`}
                     className="inline-flex items-center gap-2 text-primary font-label text-[9px] md:text-[10px] uppercase tracking-widest font-bold group/more"
                   >
-                    Read More
+                    {siteConfigs.journal_read_more_cta || 'Read More'}
                     <ArrowRight size={14} className="transition-transform group-hover/more:translate-x-1" />
                   </Link>
                 </div>
@@ -273,7 +273,7 @@ export default function BlogHub() {
 
         {!postsLoading && filteredPosts.length === 0 && (
           <div className="text-center py-24">
-            <p className="font-serif italic text-2xl text-on-surface-variant">No articles found for this selection.</p>
+            <p className="font-serif italic text-2xl text-on-surface-variant">{siteConfigs.journal_grid_empty_message || 'No articles found for this selection.'}</p>
           </div>
         )}
       </section>
@@ -294,10 +294,11 @@ export default function BlogHub() {
               </div>
               <div className="space-y-4">
                 <h2 className="text-4xl md:text-6xl font-headline font-bold text-on-surface tracking-tight">
-                  Get weekly aesthetic <span className="italic font-normal serif text-primary">inspiration</span>
+                  {siteConfigs.journal_subscribe_title_before || 'Get weekly aesthetic'}{' '}
+                  <span className="italic font-normal serif text-primary">{siteConfigs.journal_subscribe_title_emphasis || 'inspiration'}</span>
                 </h2>
                 <p className="text-on-surface-variant text-lg md:text-xl font-serif italic max-w-lg mx-auto leading-relaxed">
-                  Join 10,000+ others receiving curated guides, styling tips, and intentional living inspiration.
+                  {siteConfigs.journal_subscribe_subtitle || 'Join 10,000+ others receiving curated guides, styling tips, and intentional living inspiration.'}
                 </p>
               </div>
               
@@ -306,22 +307,22 @@ export default function BlogHub() {
                   type="email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Your email address"
+                  placeholder={siteConfigs.journal_subscribe_email_ph || 'Your email address'}
                   className="flex-1 px-8 py-5 rounded-2xl bg-white/70 backdrop-blur-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white/90 transition-all shadow-sm border border-outline-variant/30"
                 />
                 <button 
                   disabled={isSubmitting}
                   className="bg-primary hover:bg-primary-hover text-white px-10 py-5 rounded-2xl font-label font-bold uppercase tracking-widest transition-all shadow-xl shadow-primary/20 active:scale-95 disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Subscribing...' : 'Subscribe'}
+                  {isSubmitting ? (siteConfigs.journal_subscribe_button_loading || 'Subscribing...') : (siteConfigs.journal_subscribe_button || 'Subscribe')}
                 </button>
               </form>
               
-              {submitStatus === 'success' && <p className="text-green-600 font-label text-xs uppercase tracking-widest">Successfully subscribed! ✨</p>}
-              {submitStatus === 'error' && <p className="text-red-400 font-label text-xs uppercase tracking-widest">Something went wrong. Try again.</p>}
+              {submitStatus === 'success' && <p className="text-green-600 font-label text-xs uppercase tracking-widest">{siteConfigs.journal_subscribe_success || 'Successfully subscribed! ✨'}</p>}
+              {submitStatus === 'error' && <p className="text-red-400 font-label text-xs uppercase tracking-widest">{siteConfigs.journal_subscribe_error || 'Something went wrong. Try again.'}</p>}
               
               <p className="text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant/60 font-bold">
-                No spam. Just pure inspiration.
+                {siteConfigs.journal_subscribe_footer_note || 'No spam. Just pure inspiration.'}
               </p>
             </div>
           </div>

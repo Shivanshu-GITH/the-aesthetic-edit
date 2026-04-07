@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Plus, Menu, X, Heart, User, LogOut } from 'lucide-react';
+import { Menu, X, Heart, User, LogOut } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
+import { safeRouterPath, safeUserLinkHref } from '../lib/safeUrl';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -35,7 +36,10 @@ export function Navbar() {
       if (!Array.isArray(parsed)) return fallback;
       const sanitized = parsed
         .filter((l: any) => l && typeof l.name === 'string' && typeof l.path === 'string')
-        .map((l: any) => ({ name: l.name.slice(0, 40), path: l.path.startsWith('/') ? l.path : `/${l.path}` }));
+        .map((l: any) => ({
+          name: l.name.slice(0, 40),
+          path: safeRouterPath(l.path.startsWith('/') ? l.path : `/${l.path}`),
+        }));
       return sanitized.length > 0 ? sanitized : fallback;
     } catch {
       return fallback;
@@ -43,11 +47,14 @@ export function Navbar() {
   }, [siteConfigs.nav_links_json]);
 
   return (
-    <header className="bg-surface/90 backdrop-blur-md border-b border-outline-variant sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex justify-between items-center">
-        <div className="flex items-center gap-6 md:gap-12">
-          <Link to="/" className="text-xl md:text-2xl font-headline italic font-bold text-on-surface whitespace-nowrap">
-            The Aesthetic Edit
+    <header className="bg-surface/90 backdrop-blur-md border-b border-outline-variant sticky top-0 z-50 supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 md:py-4 flex justify-between items-center gap-3">
+        <div className="flex items-center gap-4 md:gap-12 min-w-0 flex-1 md:flex-none">
+          <Link
+            to="/"
+            className="text-lg sm:text-xl md:text-2xl font-headline italic font-bold text-on-surface truncate min-w-0 max-w-[min(100%,18rem)] sm:max-w-[min(100%,22rem)] md:max-w-none md:whitespace-nowrap"
+          >
+            {siteConfigs.home_hero_title || 'The Aesthetic Edit'}
           </Link>
           <nav className="hidden md:flex items-center gap-6 lg:gap-8">
             {navLinks.map((link) => (
@@ -71,10 +78,10 @@ export function Navbar() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-6">
+        <div className="flex items-center gap-1 sm:gap-2 md:gap-6 shrink-0">
           <Link 
             to="/wishlist" 
-            className="relative p-2 text-on-surface-variant hover:text-primary transition-colors"
+            className="relative min-h-11 min-w-11 inline-flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors touch-manipulation"
             aria-label={`Wishlist (${wishlistCount} items)`}
           >
             <Heart className={cn("w-4.5 h-4.5 md:w-5 md:h-5", wishlistCount > 0 && "fill-primary text-primary")} />
@@ -97,8 +104,9 @@ export function Navbar() {
                   </span>
                 </div>
                 <button 
+                  type="button"
                   onClick={logout}
-                  className="p-2 text-on-surface-variant hover:text-primary transition-colors"
+                  className="min-h-11 min-w-11 inline-flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors touch-manipulation"
                   title="Logout"
                 >
                   <LogOut size={18} />
@@ -107,7 +115,7 @@ export function Navbar() {
             ) : (
               <Link 
                 to="/login" 
-                className="text-on-surface-variant hover:text-primary transition-colors p-2"
+                className="text-on-surface-variant hover:text-primary transition-colors min-h-11 min-w-11 inline-flex items-center justify-center touch-manipulation"
                 title="Login"
               >
                 <User size={20} />
@@ -117,13 +125,17 @@ export function Navbar() {
 
           <Link 
             to="/free-guide" 
-            className="hidden lg:block bg-primary text-on-primary px-5 py-2 rounded-lg font-label text-[10px] uppercase tracking-widest hover:bg-primary-hover transition-all shadow-lg shadow-primary/10 font-bold"
+            className="hidden lg:inline-flex items-center justify-center bg-primary text-on-primary px-5 py-2.5 rounded-lg font-label text-[10px] uppercase tracking-widest hover:bg-primary-hover transition-all shadow-lg shadow-primary/10 font-bold touch-manipulation"
           >
-            Free Guide
+            {siteConfigs.nav_free_guide_label || 'Free Guide'}
           </Link>
           <button 
-            className="md:hidden p-2 text-on-surface"
+            type="button"
+            className="md:hidden min-h-11 min-w-11 inline-flex items-center justify-center text-on-surface touch-manipulation"
             onClick={() => setIsOpen(!isOpen)}
+            aria-expanded={isOpen}
+            aria-controls="mobile-nav-drawer"
+            aria-label={isOpen ? 'Close menu' : 'Open menu'}
           >
             {isOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -138,7 +150,8 @@ export function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="md:hidden bg-surface border-b border-outline-variant px-6 py-8 flex flex-col gap-6"
+            id="mobile-nav-drawer"
+            className="md:hidden bg-surface border-b border-outline-variant px-4 sm:px-6 py-6 flex flex-col gap-4 pb-[max(2rem,env(safe-area-inset-bottom))]"
           >
             {navLinks.map((link) => (
               <Link
@@ -146,7 +159,7 @@ export function Navbar() {
                 to={link.path}
                 onClick={() => setIsOpen(false)}
                 className={cn(
-                  "font-label text-lg tracking-widest uppercase",
+                  "font-label text-base sm:text-lg tracking-widest uppercase py-2 touch-manipulation",
                   location.pathname === link.path ? "text-primary" : "text-on-surface"
                 )}
               >
@@ -154,10 +167,17 @@ export function Navbar() {
               </Link>
             ))}
             <Link 
+              to="/free-guide"
+              onClick={() => setIsOpen(false)}
+              className="inline-flex items-center justify-center bg-primary text-on-primary px-5 py-3 rounded-xl font-label text-xs uppercase tracking-widest font-bold touch-manipulation"
+            >
+              {siteConfigs.nav_free_guide_label || 'Free Guide'}
+            </Link>
+            <Link 
               to="/wishlist" 
               onClick={() => setIsOpen(false)}
               className={cn(
-                "font-label text-lg tracking-widest uppercase",
+                "font-label text-base sm:text-lg tracking-widest uppercase py-2 touch-manipulation",
                 location.pathname === '/wishlist' ? "text-primary" : "text-on-surface"
               )}
             >
@@ -165,11 +185,12 @@ export function Navbar() {
             </Link>
             {user ? (
               <button 
+                type="button"
                 onClick={() => {
                   logout();
                   setIsOpen(false);
                 }}
-                className="font-label text-lg tracking-widest uppercase text-left text-on-surface"
+                className="font-label text-base sm:text-lg tracking-widest uppercase text-left text-on-surface py-2 touch-manipulation"
               >
                 Logout ({user.name})
               </button>
@@ -177,7 +198,7 @@ export function Navbar() {
               <Link 
                 to="/login" 
                 onClick={() => setIsOpen(false)}
-                className="font-label text-lg tracking-widest uppercase text-on-surface"
+                className="font-label text-base sm:text-lg tracking-widest uppercase text-on-surface py-2 touch-manipulation"
               >
                 Login / Sign Up
               </Link>
@@ -215,7 +236,10 @@ export function Footer() {
       if (!Array.isArray(parsed)) return fallback;
       const sanitized = parsed
         .filter((l: any) => l && typeof l.name === 'string' && typeof l.path === 'string')
-        .map((l: any) => ({ name: l.name.slice(0, 60), path: l.path.startsWith('/') ? l.path : `/${l.path}` }));
+        .map((l: any) => ({
+          name: l.name.slice(0, 60),
+          path: safeRouterPath(l.path.startsWith('/') ? l.path : `/${l.path}`),
+        }));
       return sanitized.length > 0 ? sanitized : fallback;
     } catch {
       return fallback;
@@ -237,7 +261,10 @@ export function Footer() {
       if (!Array.isArray(parsed)) return fallback;
       const sanitized = parsed
         .filter((l: any) => l && typeof l.name === 'string' && typeof l.path === 'string')
-        .map((l: any) => ({ name: l.name.slice(0, 60), path: l.path.startsWith('/') ? l.path : `/${l.path}` }));
+        .map((l: any) => ({
+          name: l.name.slice(0, 60),
+          path: safeRouterPath(l.path.startsWith('/') ? l.path : `/${l.path}`),
+        }));
       return sanitized.length > 0 ? sanitized : fallback;
     } catch {
       return fallback;
@@ -246,30 +273,33 @@ export function Footer() {
 
   const socialLinks = React.useMemo(() => {
     const fallback = [
-      { name: 'Pinterest', url: '#' },
-      { name: 'Instagram', url: '#' },
-      { name: 'Contact Us', url: 'mailto:hello@thecuratededit.com' },
+      { name: 'Pinterest', href: '#', external: false },
+      { name: 'Instagram', href: '#', external: false },
+      { name: 'Contact Us', href: 'mailto:hello@thecuratededit.com', external: false },
     ];
     const raw = siteConfigs.footer_social_links_json;
     if (!raw) return fallback;
     try {
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return fallback;
-      const sanitized = parsed
+      const out = parsed
         .filter((l: any) => l && typeof l.name === 'string' && typeof l.url === 'string')
-        .map((l: any) => ({ name: l.name.slice(0, 40), url: l.url }));
-      return sanitized.length > 0 ? sanitized : fallback;
+        .map((l: any) => {
+          const { href, external } = safeUserLinkHref(l.url);
+          return { name: l.name.slice(0, 40), href, external };
+        });
+      return out.length > 0 ? out : fallback;
     } catch {
       return fallback;
     }
   }, [siteConfigs.footer_social_links_json]);
 
   return (
-    <footer className="bg-linear-to-b from-[#3e2a1f] to-[#5a3b2a] text-surface pt-24 pb-12">
-      <div className="max-w-7xl mx-auto px-6 border-b border-white/10 pb-20">
+    <footer className="bg-linear-to-b from-[#3e2a1f] to-[#5a3b2a] text-surface pt-16 sm:pt-20 md:pt-24 pb-[max(3rem,env(safe-area-inset-bottom))]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 border-b border-white/10 pb-12 sm:pb-16 md:pb-20">
         {/* Top Section: Title & Quote */}
-        <div className="flex flex-col items-center text-center space-y-8 mb-20">
-          <Link to="/" className="text-4xl md:text-6xl font-headline italic block text-white drop-shadow-sm">
+        <div className="flex flex-col items-center text-center space-y-6 sm:space-y-8 mb-12 sm:mb-16 md:mb-20 px-2">
+          <Link to="/" className="text-3xl sm:text-4xl md:text-6xl font-headline italic block text-white drop-shadow-sm break-words max-w-full">
             {siteConfigs.home_hero_title || 'The Aesthetic Edit'}
           </Link>
           <p className="font-label text-xs md:text-sm uppercase tracking-[0.4em] text-surface/70 leading-relaxed max-w-3xl mx-auto">
@@ -278,9 +308,9 @@ export function Footer() {
         </div>
         
         {/* Bottom Section: Link Grids */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-16 md:gap-24 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 sm:gap-14 md:gap-24 text-center">
           <div className="space-y-8">
-            <h4 className="font-headline text-xl text-white tracking-wide">Quick Links</h4>
+            <h4 className="font-headline text-xl text-white tracking-wide">{siteConfigs.footer_col_quick_links || 'Quick Links'}</h4>
             <ul className="space-y-5 font-label text-[11px] uppercase tracking-[0.2em] text-surface/60">
               {quickLinks.map((l) => (
                 <li key={l.path}><Link to={l.path} className="hover:text-white transition-all duration-300">{l.name}</Link></li>
@@ -289,7 +319,7 @@ export function Footer() {
           </div>
 
           <div className="space-y-8">
-            <h4 className="font-headline text-xl text-white tracking-wide">Categories</h4>
+            <h4 className="font-headline text-xl text-white tracking-wide">{siteConfigs.footer_col_categories || 'Categories'}</h4>
             <ul className="space-y-5 font-label text-[11px] uppercase tracking-[0.2em] text-surface/60">
               {blogCategoryLinks.map((l) => (
                 <li key={l.path}><Link to={l.path} className="hover:text-white transition-all duration-300">{l.name}</Link></li>
@@ -298,17 +328,26 @@ export function Footer() {
           </div>
 
           <div className="space-y-8">
-            <h4 className="font-headline text-xl text-white tracking-wide">Connect</h4>
+            <h4 className="font-headline text-xl text-white tracking-wide">{siteConfigs.footer_col_connect || 'Connect'}</h4>
             <ul className="space-y-5 font-label text-[11px] uppercase tracking-[0.2em] text-surface/60">
               {socialLinks.map((l) => (
-                <li key={l.name}><a href={l.url} className="hover:text-white transition-all duration-300" rel={l.url.startsWith('http') ? 'noopener noreferrer' : undefined} target={l.url.startsWith('http') ? '_blank' : undefined}>{l.name}</a></li>
+                <li key={`${l.name}-${l.href}`}>
+                  <a
+                    href={l.href}
+                    className="hover:text-white transition-all duration-300 break-all inline-block max-w-full"
+                    rel={l.external ? 'noopener noreferrer' : undefined}
+                    target={l.external ? '_blank' : undefined}
+                  >
+                    {l.name}
+                  </a>
+                </li>
               ))}
             </ul>
           </div>
         </div>
       </div>
       
-      <div className="max-w-7xl mx-auto px-12 pt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-[11px] font-label uppercase tracking-[0.3em] text-surface/40 items-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 pt-8 sm:pt-12 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 text-[10px] sm:text-[11px] font-label uppercase tracking-[0.2em] sm:tracking-[0.3em] text-surface/40 items-center">
         <div className="text-center md:text-left wrap-break-word">
           <p>{siteConfigs.footer_copyright || '© 2026 THE AESTHETIC EDIT. ALL RIGHTS RESERVED.'}</p>
         </div>
@@ -316,7 +355,7 @@ export function Footer() {
           <Link to="/admin" className="hover:text-surface/60 transition-colors">Admin</Link>
         </div>
         <div className="text-center md:text-right wrap-break-word">
-          <p className="hover:text-surface/60 cursor-pointer transition-colors">AFFILIATE DISCLOSURE</p>
+          <p className="hover:text-surface/60 cursor-pointer transition-colors">{siteConfigs.footer_affiliate_disclosure || 'AFFILIATE DISCLOSURE'}</p>
         </div>
       </div>
     </footer>
