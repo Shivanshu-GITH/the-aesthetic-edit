@@ -8,11 +8,43 @@ const geoLimit = rateLimit({
   max: 100, 
   message: { success: false, error: 'Rate limited' }, 
 }); 
+
+const isLikelyPublicIp = (ip: string) => {
+  if (!ip) return false;
+  const normalized = ip.replace('::ffff:', '').trim();
+  if (normalized === '127.0.0.1' || normalized === '::1') return false;
+  if (/^10\./.test(normalized)) return false;
+  if (/^192\.168\./.test(normalized)) return false;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(normalized)) return false;
+  return true;
+};
+
+const getClientIp = (req: any) => {
+  const forwardedFor = String(req.headers['x-forwarded-for'] || '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+  const headerCandidates = [
+    forwardedFor[0],
+    req.headers['cf-connecting-ip'],
+    req.headers['x-real-ip'],
+    req.ip,
+  ]
+    .map((v) => String(v || '').trim())
+    .filter(Boolean);
+
+  const publicIp = headerCandidates.find(isLikelyPublicIp);
+  return publicIp || '';
+};
  
 router.get('/detect', geoLimit, async (req, res) => { 
   try { 
+    const clientIp = getClientIp(req);
+    const ipapiUrl = clientIp ? `https://ipapi.co/${encodeURIComponent(clientIp)}/json/` : 'https://ipapi.co/json/';
+
     // Primary: ipapi.co
-    const response = await fetch('https://ipapi.co/json/', {
+    const response = await fetch(ipapiUrl, {
       headers: { 'User-Agent': 'TheAestheticEdit/1.0' }
     }); 
     if (response.ok) {
@@ -21,7 +53,10 @@ router.get('/detect', geoLimit, async (req, res) => {
     }
 
     // Fallback: ip-api.com
-    const fbResponse = await fetch('https://ip-api.com/json/');
+    const ipApiUrl = clientIp
+      ? `https://ip-api.com/json/${encodeURIComponent(clientIp)}`
+      : 'https://ip-api.com/json/';
+    const fbResponse = await fetch(ipApiUrl);
     if (fbResponse.ok) {
       const fbData = await fbResponse.json();
       return res.json({ 
