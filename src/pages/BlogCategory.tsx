@@ -1,15 +1,21 @@
 import React, { useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Clock, ArrowRight } from 'lucide-react';
+import { Clock, ArrowRight, Heart, Share2, Check } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
 import { useBlogCategories, useBlogPosts } from '../hooks/useBlog';
 import { BlogPostCardGridSkeleton } from '../components/Skeleton';
 import ImageCarousel from '../components/ImageCarousel';
+import { useWishlist } from '../context/WishlistContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function BlogCategory() {
   const { category: categorySlug } = useParams();
-  
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { isJournalWishlisted, toggleJournalWishlist } = useWishlist();
+  const { user } = useAuth();
+  const [justSharedId, setJustSharedId] = React.useState<string | null>(null);
   const { categories, loading: catLoading } = useBlogCategories();
   const { posts, loading: postsLoading, error } = useBlogPosts(categorySlug, 1, 12);
   const [siteConfigs, setSiteConfigs] = React.useState<Record<string, string>>({});
@@ -30,6 +36,43 @@ export default function BlogCategory() {
   const category = useMemo(() => 
     categories.find(c => c.slug === categorySlug),
   [categories, categorySlug]);
+
+  const handleCardWishlist = async (e: React.MouseEvent, postId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      navigate('/login', { state: { from: location } });
+      return;
+    }
+    await toggleJournalWishlist(postId);
+  };
+
+  const handleCardShare = async (e: React.MouseEvent, post: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}/blog/${post.categorySlug}/${post.slug}`;
+    const shareData = {
+      title: post.title,
+      text: post.excerpt,
+      url: shareUrl,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setJustSharedId(post.id);
+        window.setTimeout(() => setJustSharedId((prev) => (prev === post.id ? null : prev)), 2000);
+      } catch (err) {
+        console.error('Error copying to clipboard:', err);
+      }
+    }
+  };
 
   if (catLoading || postsLoading) return (
     <div className="pb-32 bg-surface pt-24 px-6">
@@ -117,6 +160,45 @@ export default function BlogCategory() {
                     />
                   </div>
                 </div>
+
+                {/* Actions: wishlist + share */}
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={(e) => handleCardWishlist(e, post.id)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[8px] md:text-[9px] font-label uppercase tracking-[0.2em] font-bold transition-all touch-manipulation min-h-9 ${
+                      isJournalWishlisted(post.id)
+                        ? 'bg-primary text-on-primary border-primary'
+                        : 'bg-white/90 border-outline-variant/40 text-on-surface-variant hover:border-primary hover:text-primary shadow-sm'
+                    }`}
+                    aria-label={isJournalWishlisted(post.id) ? 'Remove saved journal' : 'Save journal'}
+                  >
+                    <Heart
+                      size={12}
+                      className={isJournalWishlisted(post.id) ? 'fill-current scale-110 transition-transform' : 'transition-transform'}
+                    />
+                    <span className="hidden sm:inline">
+                      {isJournalWishlisted(post.id) ? (siteConfigs.journal_saved_label || 'Saved') : (siteConfigs.journal_save_label || 'Save')}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => handleCardShare(e, post)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[8px] md:text-[9px] font-label uppercase tracking-[0.2em] font-bold transition-all touch-manipulation min-h-9 ${
+                      justSharedId === post.id
+                        ? 'bg-accent-peach text-on-primary border-accent-peach'
+                        : 'bg-white/90 border-outline-variant/40 text-on-surface-variant hover:border-primary hover:text-primary shadow-sm'
+                    }`}
+                    aria-label="Share article"
+                  >
+                    {justSharedId === post.id ? <Check size={12} /> : <Share2 size={12} />}
+                    <span className="hidden sm:inline">
+                      {justSharedId === post.id ? (siteConfigs.journal_shared_label || 'Copied') : (siteConfigs.journal_share_label || 'Share')}
+                    </span>
+                  </button>
+                </div>
+
                 <Link to={`/blog/${categorySlug}/${post.slug}`}>
                   <h3 className="text-2xl font-headline font-bold leading-snug text-on-surface group-hover:text-primary transition-colors">
                     {post.title}

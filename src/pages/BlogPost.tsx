@@ -159,22 +159,65 @@ export default function BlogPost() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="flex items-center justify-center gap-4 md:gap-6 relative z-10"
+          className="flex flex-col items-center justify-center gap-3 md:gap-4 relative z-10"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-white shadow-sm bg-surface-container">
-              <img 
-                src={post.authorImage || "https://i.pravatar.cc/150?u=elena"} 
-                alt={post.author} 
-                className="w-full h-full object-cover" 
-                referrerPolicy="no-referrer" 
-              />
+          <div className="flex items-center justify-center gap-4 md:gap-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-white shadow-sm bg-surface-container">
+                <img 
+                  src={post.authorImage || "https://i.pravatar.cc/150?u=elena"} 
+                  alt={post.author} 
+                  className="w-full h-full object-cover" 
+                  referrerPolicy="no-referrer" 
+                />
+              </div>
+              <span className="font-label text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-on-surface">{post.author}</span>
             </div>
-            <span className="font-label text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-on-surface">{post.author}</span>
+            <div className="hidden md:block h-4 w-px bg-outline-variant/30"></div>
+            <div className="flex items-center gap-2 font-label text-[9px] md:text-[10px] uppercase tracking-widest text-on-surface-variant">
+              <Clock size={14} /> {post.readTime}
+            </div>
           </div>
-          <div className="h-4 w-px bg-outline-variant/30"></div>
-          <div className="flex items-center gap-2 font-label text-[9px] md:text-[10px] uppercase tracking-widest text-on-surface-variant">
-            <Clock size={14} /> {post.readTime}
+
+          {/* Share & Wishlist actions */}
+          <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 mt-2">
+            <button
+              type="button"
+              onClick={handleShare}
+              className={cn(
+                "inline-flex items-center gap-2 px-4 py-2 rounded-full border text-[9px] md:text-[10px] font-label uppercase tracking-[0.2em] font-bold transition-all touch-manipulation min-h-11",
+                isShared
+                  ? "bg-accent-peach border-accent-peach text-on-primary"
+                  : "bg-white/90 border-outline-variant/40 text-on-surface-variant hover:border-primary hover:text-primary shadow-sm"
+              )}
+              aria-label="Share article"
+            >
+              {isShared ? <Check size={14} /> : <Share2 size={14} />}
+              <span className="hidden xs:inline">Share</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleWishlist}
+              className={cn(
+                "inline-flex items-center gap-2 px-4 py-2 rounded-full border text-[9px] md:text-[10px] font-label uppercase tracking-[0.2em] font-bold transition-all touch-manipulation min-h-11",
+                isJournalWishlisted(post.id)
+                  ? "bg-primary text-on-primary border-primary"
+                  : "bg-white/90 border-outline-variant/40 text-on-surface-variant hover:border-primary hover:text-primary shadow-sm"
+              )}
+              aria-label={isJournalWishlisted(post.id) ? "Remove from saved journals" : "Save journal to wishlist"}
+            >
+              <Heart
+                size={14}
+                className={cn(
+                  "transition-transform",
+                  isJournalWishlisted(post.id) && "fill-current scale-110"
+                )}
+              />
+              <span className="hidden xs:inline">
+                {isJournalWishlisted(post.id) ? 'Saved' : 'Save'}
+              </span>
+            </button>
           </div>
         </motion.div>
       </header>
@@ -380,9 +423,76 @@ export default function BlogPost() {
                     referrerPolicy="no-referrer" 
                   />
                 </div>
-                <span className="font-label text-[9px] md:text-[10px] uppercase tracking-widest text-primary font-bold">{related.category}</span>
-                <h3 className="text-xl font-headline font-bold mt-2 text-on-surface group-hover:text-primary transition-colors">{related.title}</h3>
               </Link>
+              <div className="space-y-3 px-1">
+                <span className="font-label text-[9px] md:text-[10px] uppercase tracking-widest text-primary font-bold">{related.category}</span>
+                <Link to={`/blog/${related.categorySlug}/${related.slug}`}>
+                  <h3 className="text-xl font-headline font-bold mt-1 text-on-surface group-hover:text-primary transition-colors line-clamp-2">
+                    {related.title}
+                  </h3>
+                </Link>
+                {/* Actions: wishlist + share */}
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!user) {
+                        navigate('/login', { state: { from: location } });
+                        return;
+                      }
+                      toggleJournalWishlist(related.id);
+                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[8px] md:text-[9px] font-label uppercase tracking-[0.2em] font-bold transition-all touch-manipulation min-h-9",
+                      isJournalWishlisted(related.id)
+                        ? "bg-primary text-on-primary border-primary"
+                        : "bg-white/90 border-outline-variant/40 text-on-surface-variant hover:border-primary hover:text-primary shadow-sm"
+                    )}
+                    aria-label={isJournalWishlisted(related.id) ? "Remove saved journal" : "Save journal"}
+                  >
+                    <Heart
+                      size={12}
+                      className={cn(
+                        "transition-transform",
+                        isJournalWishlisted(related.id) && "fill-current scale-110"
+                      )}
+                    />
+                    <span className="hidden sm:inline">
+                      {isJournalWishlisted(related.id) ? 'Saved' : 'Save'}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const shareUrl = `${window.location.origin}/blog/${related.categorySlug}/${related.slug}`;
+                      const shareData = {
+                        title: related.title,
+                        text: related.excerpt,
+                        url: shareUrl,
+                      };
+                      if (navigator.share) {
+                        navigator.share(shareData).catch((err) => {
+                          console.error('Error sharing:', err);
+                        });
+                      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(shareUrl).catch((err) => {
+                          console.error('Error copying to clipboard:', err);
+                        });
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[8px] md:text-[9px] font-label uppercase tracking-[0.2em] font-bold transition-all touch-manipulation min-h-9 bg-white/90 border-outline-variant/40 text-on-surface-variant hover:border-primary hover:text-primary shadow-sm"
+                    aria-label="Share article"
+                  >
+                    <Share2 size={12} />
+                    <span className="hidden sm:inline">Share</span>
+                  </button>
+                </div>
+              </div>
             </div>
           ))}
         </div>

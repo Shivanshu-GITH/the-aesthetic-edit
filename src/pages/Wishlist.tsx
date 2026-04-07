@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
@@ -7,17 +7,21 @@ import { Product, BlogPost } from '../types';
 import ProductCard from '../components/ProductCard';
 import SEOMeta from '../components/SEOMeta';
 import { cn } from '../lib/utils';
+import { Heart, Share2, Check } from 'lucide-react';
 
 type WishlistTab = 'products' | 'journals';
 
 export default function Wishlist() {
   const { wishlistCount, toggleWishlist, toggleJournalWishlist } = useWishlist();
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [journals, setJournals] = useState<BlogPost[]>([]);
   const [activeTab, setActiveTab] = useState<WishlistTab>('products');
   const [isLoading, setIsLoading] = useState(true);
   const [siteConfigs, setSiteConfigs] = useState<Record<string, string>>({});
+  const [justSharedId, setJustSharedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/home-shop/config')
@@ -230,33 +234,109 @@ export default function Wishlist() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
           {journals.map((journal, index) => (
-            <motion.div 
+            <motion.article 
               key={journal.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="group bg-white p-4 rounded-[32px] border border-outline-variant/30 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
+              className="group space-y-6 bg-white p-4 rounded-[32px] border border-outline-variant/30 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
             >
-              <Link to={`/blog/${journal.categorySlug}/${journal.slug}`}>
-                <div className="aspect-[4/3] rounded-[24px] overflow-hidden mb-6 bg-surface-container">
-                  <img 
-                    src={journal.image} 
-                    alt={journal.title} 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                  />
-                </div>
-                <div className="px-2 space-y-4">
-                  <div className="flex items-center gap-3 font-label text-[9px] uppercase tracking-widest text-primary font-bold">
-                    <span>{journal.category}</span>
-                    <span className="w-1 h-1 bg-accent-peach rounded-full"></span>
-                    <span className="text-outline">{journal.date}</span>
+              <Link to={`/blog/${journal.categorySlug}/${journal.slug}`} className="block relative aspect-4/5 rounded-[24px] overflow-hidden shadow-sm bg-surface-container">
+                <img 
+                  src={journal.image} 
+                  alt={journal.title} 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                />
+              </Link>
+
+              <div className="space-y-4 px-2">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 md:gap-4 text-[9px] md:text-[10px] font-label uppercase tracking-widest text-outline">
+                    <span>{journal.date}</span>
+                    <span className="w-1 h-1 rounded-full bg-outline/30"></span>
+                    <span>{journal.readTime}</span>
                   </div>
-                  <h3 className="text-xl font-headline font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-2">
+                </div>
+
+                {/* Actions: wishlist (unsave) + share, same styling as journal cards */}
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!user) {
+                        navigate('/login', { state: { from: location } });
+                        return;
+                      }
+                      await toggleJournalWishlist(journal.id);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[8px] md:text-[9px] font-label uppercase tracking-[0.2em] font-bold transition-all touch-manipulation min-h-9 bg-primary text-on-primary border-primary"
+                    aria-label="Remove saved journal"
+                  >
+                    <Heart
+                      size={12}
+                      className="fill-current scale-110 transition-transform"
+                    />
+                    <span className="hidden sm:inline">
+                      {siteConfigs.journal_saved_label || 'Saved'}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const shareUrl = `${window.location.origin}/blog/${journal.categorySlug}/${journal.slug}`;
+                      const shareData = {
+                        title: journal.title,
+                        text: journal.excerpt,
+                        url: shareUrl,
+                      };
+                      if (navigator.share) {
+                        try {
+                          await navigator.share(shareData);
+                        } catch (err) {
+                          console.error('Error sharing:', err);
+                        }
+                      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+                        try {
+                          await navigator.clipboard.writeText(shareUrl);
+                          setJustSharedId(journal.id);
+                          window.setTimeout(() => {
+                            setJustSharedId((prev) => (prev === journal.id ? null : prev));
+                          }, 2000);
+                        } catch (err) {
+                          console.error('Error copying to clipboard:', err);
+                        }
+                      }
+                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[8px] md:text-[9px] font-label uppercase tracking-[0.2em] font-bold transition-all touch-manipulation min-h-9",
+                      justSharedId === journal.id
+                        ? "bg-accent-peach text-on-primary border-accent-peach"
+                        : "bg-white/90 border-outline-variant/40 text-on-surface-variant hover:border-primary hover:text-primary shadow-sm"
+                    )}
+                    aria-label="Share article"
+                  >
+                    {justSharedId === journal.id ? <Check size={12} /> : <Share2 size={12} />}
+                    <span className="hidden sm:inline">
+                      {justSharedId === journal.id ? (siteConfigs.journal_shared_label || 'Copied') : (siteConfigs.journal_share_label || 'Share')}
+                    </span>
+                  </button>
+                </div>
+
+                <Link to={`/blog/${journal.categorySlug}/${journal.slug}`}>
+                  <h3 className="text-xl md:text-2xl font-headline font-bold leading-tight text-on-surface group-hover:text-primary transition-colors line-clamp-2">
                     {journal.title}
                   </h3>
-                </div>
-              </Link>
-            </motion.div>
+                </Link>
+                <p className="text-sm md:text-base text-on-surface-variant leading-relaxed line-clamp-2">
+                  {journal.excerpt}
+                </p>
+              </div>
+            </motion.article>
           ))}
         </div>
       )}
