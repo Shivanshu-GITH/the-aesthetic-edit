@@ -134,6 +134,15 @@ export default function Shop() {
 
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
+  if (loadingCategories) {
+    return (
+      <div className="pb-24 px-4 sm:px-6 pt-12 animate-pulse space-y-8">
+        <div className="max-w-7xl mx-auto h-40 rounded-4xl bg-surface-container" />
+        <div className="max-w-7xl mx-auto h-[60vh] rounded-4xl bg-surface-container" />
+      </div>
+    );
+  }
+
   const toggleCategory = (name: string) => {
     setOpenCategories(prev => 
       prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name]

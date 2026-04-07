@@ -19,7 +19,7 @@ import {
 import { useAdminContext } from './AdminContext';
 import { TabType } from './hooks/useAdmin';
 
-export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AdminLayout: React.FC<{ children: React.ReactNode; onTabIntent?: (tab: TabType) => void }> = ({ children, onTabIntent }) => {
   const { 
     isAuthenticated, 
     isLoading, 
@@ -117,6 +117,8 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
+              onMouseEnter={() => onTabIntent?.(item.id)}
+              onFocus={() => onTabIntent?.(item.id)}
               className={`flex items-center gap-4 w-full px-5 py-4 rounded-2xl transition-all font-label text-xs uppercase tracking-widest font-bold ${
                 activeTab === item.id 
                   ? 'bg-primary text-white shadow-lg shadow-primary/20' 
@@ -171,6 +173,8 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
               {navItems.map((item) => (
                 <button
                   key={item.id}
+                  onMouseEnter={() => onTabIntent?.(item.id)}
+                  onFocus={() => onTabIntent?.(item.id)}
                   onClick={() => {
                     setActiveTab(item.id);
                     setIsMobileNavOpen(false);

@@ -7,19 +7,33 @@ import { AuthProvider } from './context/AuthContext';
 import { ToastStack } from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 
-const Home = lazy(() => import('./pages/Home'));
-const About = lazy(() => import('./pages/About'));
-const BlogHub = lazy(() => import('./pages/BlogHub'));
-const BlogCategory = lazy(() => import('./pages/BlogCategory'));
-const BlogPost = lazy(() => import('./pages/BlogPost'));
-const Shop = lazy(() => import('./pages/Shop'));
-const ProductDetail = lazy(() => import('./pages/ProductDetail'));
-const FreeGuide = lazy(() => import('./pages/FreeGuide'));
-const Wishlist = lazy(() => import('./pages/Wishlist'));
-const NotFound = lazy(() => import('./pages/NotFound'));
-const Admin = lazy(() => import('./pages/Admin'));
-const Login = lazy(() => import('./pages/Login'));
-const Signup = lazy(() => import('./pages/Signup'));
+const loadHome = () => import('./pages/Home');
+const loadAbout = () => import('./pages/About');
+const loadBlogHub = () => import('./pages/BlogHub');
+const loadBlogCategory = () => import('./pages/BlogCategory');
+const loadBlogPost = () => import('./pages/BlogPost');
+const loadShop = () => import('./pages/Shop');
+const loadProductDetail = () => import('./pages/ProductDetail');
+const loadFreeGuide = () => import('./pages/FreeGuide');
+const loadWishlist = () => import('./pages/Wishlist');
+const loadNotFound = () => import('./pages/NotFound');
+const loadAdmin = () => import('./pages/Admin');
+const loadLogin = () => import('./pages/Login');
+const loadSignup = () => import('./pages/Signup');
+
+const Home = lazy(loadHome);
+const About = lazy(loadAbout);
+const BlogHub = lazy(loadBlogHub);
+const BlogCategory = lazy(loadBlogCategory);
+const BlogPost = lazy(loadBlogPost);
+const Shop = lazy(loadShop);
+const ProductDetail = lazy(loadProductDetail);
+const FreeGuide = lazy(loadFreeGuide);
+const Wishlist = lazy(loadWishlist);
+const NotFound = lazy(loadNotFound);
+const Admin = lazy(loadAdmin);
+const Login = lazy(loadLogin);
+const Signup = lazy(loadSignup);
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -50,6 +64,7 @@ export default function App() {
 function AppContent() {
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith('/admin');
+  const prefetchedPublicRoutesRef = React.useRef(false);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -74,6 +89,34 @@ function AppContent() {
       isMounted = false;
     };
   }, []);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (isAdminPage || prefetchedPublicRoutesRef.current) return;
+
+    const runtime = globalThis as typeof globalThis & {
+      requestIdleCallback?: (callback: () => void) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+
+    const prefetchPublicRoutes = () => {
+      if (prefetchedPublicRoutesRef.current) return;
+      prefetchedPublicRoutesRef.current = true;
+      void loadShop();
+      void loadBlogHub();
+      void loadFreeGuide();
+      void loadProductDetail();
+      void loadBlogPost();
+    };
+
+    if (typeof runtime.requestIdleCallback === 'function' && typeof runtime.cancelIdleCallback === 'function') {
+      const idleId = runtime.requestIdleCallback(prefetchPublicRoutes);
+      return () => runtime.cancelIdleCallback?.(idleId);
+    }
+
+    const timerId = globalThis.setTimeout(prefetchPublicRoutes, 700);
+    return () => globalThis.clearTimeout(timerId);
+  }, [isAdminPage]);
 
   return (
     <div className="min-h-screen flex flex-col noise-overlay w-full min-w-0 overflow-x-clip">

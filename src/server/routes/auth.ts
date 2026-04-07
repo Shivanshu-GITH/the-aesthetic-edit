@@ -41,6 +41,12 @@ function issueToken(res: Response, user: { id: string; name: string; email: stri
   }); 
 } 
 
+const clearCookieOptions = {
+  httpOnly: true as const,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+};
+
 router.post('/signup', loginLimit, async (req, res) => { 
   const result = signupSchema.safeParse(req.body); 
   if (!result.success) { 
@@ -91,7 +97,7 @@ router.post('/google', (req, res) => {
 }); 
 
 router.post('/logout', (req, res) => { 
-  res.clearCookie('ae_token'); 
+  res.clearCookie('ae_token', clearCookieOptions); 
   res.json({ success: true }); 
 }); 
 
@@ -116,7 +122,7 @@ router.post('/admin/login', loginLimit, async (req, res) => {
 }); 
 
 router.post('/admin/logout', (req, res) => { 
-  res.clearCookie('ae_admin_token'); 
+  res.clearCookie('ae_admin_token', { ...clearCookieOptions, sameSite: 'strict' }); 
   res.json({ success: true }); 
 }); 
 

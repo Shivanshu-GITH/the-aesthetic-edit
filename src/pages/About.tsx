@@ -31,6 +31,15 @@ export default function About() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  if (loading) {
+    return (
+      <div className="pb-24 px-6 pt-16 space-y-10 animate-pulse">
+        <div className="max-w-7xl mx-auto h-72 rounded-4xl bg-surface-container" />
+        <div className="max-w-7xl mx-auto h-96 rounded-4xl bg-surface-container" />
+      </div>
+    );
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);

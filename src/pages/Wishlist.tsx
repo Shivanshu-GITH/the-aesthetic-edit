@@ -21,6 +21,7 @@ export default function Wishlist() {
   const [activeTab, setActiveTab] = useState<WishlistTab>('products');
   const [isLoading, setIsLoading] = useState(true);
   const [siteConfigs, setSiteConfigs] = useState<Record<string, string>>({});
+  const [loadingConfig, setLoadingConfig] = useState(true);
   const [justSharedId, setJustSharedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,7 +30,8 @@ export default function Wishlist() {
       .then((data) => {
         if (data.success) setSiteConfigs(data.data);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoadingConfig(false));
   }, []);
 
   useEffect(() => {
@@ -90,7 +92,7 @@ export default function Wishlist() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || loadingConfig) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-24 space-y-12">
         <div className="space-y-4 animate-pulse">

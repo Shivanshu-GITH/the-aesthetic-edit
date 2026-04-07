@@ -19,6 +19,7 @@ export default function BlogCategory() {
   const { categories, loading: catLoading } = useBlogCategories();
   const { posts, loading: postsLoading, error } = useBlogPosts(categorySlug, 1, 12);
   const [siteConfigs, setSiteConfigs] = React.useState<Record<string, string>>({});
+  const [loadingConfig, setLoadingConfig] = React.useState(true);
 
   React.useEffect(() => {
     fetch('/api/home-shop/config')
@@ -26,11 +27,12 @@ export default function BlogCategory() {
       .then(data => {
         if (data.success) setSiteConfigs(data.data);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoadingConfig(false));
   }, []);
 
   const defaultAuthorImage =
-    siteConfigs.blog_default_author_image ||
+    (!loadingConfig && siteConfigs.blog_default_author_image) ||
     'https://i.pravatar.cc/150?u=author';
 
   const category = useMemo(() => 
@@ -74,7 +76,7 @@ export default function BlogCategory() {
     }
   };
 
-  if (catLoading || postsLoading) return (
+  if (catLoading || postsLoading || loadingConfig) return (
     <div className="pb-32 bg-surface pt-24 px-6">
       <div className="max-w-7xl mx-auto space-y-12">
         <div className="h-24 w-64 bg-surface-container animate-pulse rounded-2xl mx-auto" />

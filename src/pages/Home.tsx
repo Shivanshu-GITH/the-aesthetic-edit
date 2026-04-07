@@ -49,6 +49,16 @@ export default function Home() {
   const visibleMoods = showAllMoods ? moods : (moods.length > moodColumns ? moods.slice(0, Math.floor(moods.length / moodColumns) * moodColumns) : moods);
   const hasMoreMoods = !showAllMoods && moods.length > visibleMoods.length;
 
+  if (loadingConfig) {
+    return (
+      <div className="min-h-screen space-y-10 md:space-y-16 pb-16 md:pb-24 px-6 pt-10 animate-pulse">
+        <div className="h-[60vh] rounded-4xl bg-surface-container" />
+        <div className="h-16 rounded-3xl bg-surface-container" />
+        <div className="h-64 rounded-4xl bg-surface-container" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen space-y-20 md:space-y-32 pb-20 md:pb-32">
       <SEOMeta 

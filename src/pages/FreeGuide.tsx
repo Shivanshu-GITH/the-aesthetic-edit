@@ -13,6 +13,7 @@ const DEFAULT_BULLETS = [
 
 export default function FreeGuide() {
   const [siteConfigs, setSiteConfigs] = React.useState<Record<string, string>>({});
+  const [loadingConfig, setLoadingConfig] = React.useState(true);
   const [submitted, setSubmitted] = React.useState(false);
   const [email, setEmail] = React.useState('');
   const [name, setName] = React.useState('');
@@ -27,7 +28,8 @@ export default function FreeGuide() {
       .then((data) => {
         if (data.success) setSiteConfigs(data.data);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoadingConfig(false));
   }, []);
 
   const bulletItems = useMemo(() => {
@@ -100,6 +102,14 @@ export default function FreeGuide() {
     'Free Pinterest Growth Guide by The Aesthetic Edit';
 
   const isInstantDownload = Boolean(guideDownloadUrl || siteConfigs.free_guide_file_url);
+
+  if (loadingConfig) {
+    return (
+      <div className="min-h-screen px-6 py-24 animate-pulse">
+        <div className="max-w-7xl mx-auto h-[65vh] rounded-4xl bg-surface-container" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-surface relative overflow-hidden">

@@ -13,6 +13,7 @@ export function Navbar() {
   const { wishlistCount } = useWishlist();
   const { user, logout } = useAuth();
   const [siteConfigs, setSiteConfigs] = React.useState<Record<string, string>>({});
+  const [loadingConfig, setLoadingConfig] = React.useState(true);
 
   useEffect(() => {
     fetch('/api/home-shop/config')
@@ -20,7 +21,8 @@ export function Navbar() {
       .then(data => {
         if (data.success) setSiteConfigs(data.data);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoadingConfig(false));
   }, []);
 
   const navLinks = React.useMemo(() => {
@@ -30,6 +32,7 @@ export function Navbar() {
       { name: 'About', path: '/about' },
     ];
     const raw = siteConfigs.nav_links_json;
+    if (loadingConfig) return [];
     if (!raw) return fallback;
     try {
       const parsed = JSON.parse(raw);
@@ -44,7 +47,15 @@ export function Navbar() {
     } catch {
       return fallback;
     }
-  }, [siteConfigs.nav_links_json]);
+  }, [siteConfigs.nav_links_json, loadingConfig]);
+
+  if (loadingConfig) {
+    return (
+      <header className="bg-surface/90 backdrop-blur-md border-b border-outline-variant sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 md:py-4 h-[72px] animate-pulse" />
+      </header>
+    );
+  }
 
   return (
     <header className="bg-surface/90 backdrop-blur-md border-b border-outline-variant sticky top-0 z-50 supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)]">
@@ -212,6 +223,7 @@ export function Navbar() {
 
 export function Footer() {
   const [siteConfigs, setSiteConfigs] = useState<Record<string, string>>({});
+  const [loadingConfig, setLoadingConfig] = useState(true);
 
   useEffect(() => {
     fetch('/api/home-shop/config')
@@ -219,7 +231,8 @@ export function Footer() {
       .then(data => {
         if (data.success) setSiteConfigs(data.data);
       })
-      .catch(err => console.error('Failed to fetch site config', err));
+      .catch(err => console.error('Failed to fetch site config', err))
+      .finally(() => setLoadingConfig(false));
   }, []);
 
   const quickLinks = React.useMemo(() => {
@@ -230,6 +243,7 @@ export function Footer() {
       { name: 'Free Guide', path: '/free-guide' },
     ];
     const raw = siteConfigs.footer_quick_links_json;
+    if (loadingConfig) return [];
     if (!raw) return fallback;
     try {
       const parsed = JSON.parse(raw);
@@ -244,7 +258,7 @@ export function Footer() {
     } catch {
       return fallback;
     }
-  }, [siteConfigs.footer_quick_links_json]);
+  }, [siteConfigs.footer_quick_links_json, loadingConfig]);
 
   const blogCategoryLinks = React.useMemo(() => {
     const fallback = [
@@ -255,6 +269,7 @@ export function Footer() {
       { name: 'Tech & Setups', path: '/blog/tech-setups' },
     ];
     const raw = siteConfigs.footer_blog_category_links_json;
+    if (loadingConfig) return [];
     if (!raw) return fallback;
     try {
       const parsed = JSON.parse(raw);
@@ -269,7 +284,7 @@ export function Footer() {
     } catch {
       return fallback;
     }
-  }, [siteConfigs.footer_blog_category_links_json]);
+  }, [siteConfigs.footer_blog_category_links_json, loadingConfig]);
 
   const socialLinks = React.useMemo(() => {
     const fallback = [
@@ -278,6 +293,7 @@ export function Footer() {
       { name: 'Contact Us', href: 'mailto:hello@thecuratededit.com', external: false },
     ];
     const raw = siteConfigs.footer_social_links_json;
+    if (loadingConfig) return [];
     if (!raw) return fallback;
     try {
       const parsed = JSON.parse(raw);
@@ -292,7 +308,15 @@ export function Footer() {
     } catch {
       return fallback;
     }
-  }, [siteConfigs.footer_social_links_json]);
+  }, [siteConfigs.footer_social_links_json, loadingConfig]);
+
+  if (loadingConfig) {
+    return (
+      <footer className="bg-linear-to-b from-[#3e2a1f] to-[#5a3b2a] text-surface pt-16 pb-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-40 animate-pulse" />
+      </footer>
+    );
+  }
 
   return (
     <footer className="bg-linear-to-b from-[#3e2a1f] to-[#5a3b2a] text-surface pt-16 sm:pt-20 md:pt-24 pb-[max(3rem,env(safe-area-inset-bottom))]">

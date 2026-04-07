@@ -15,6 +15,7 @@ export default function BlogHub() {
   const location = useLocation();
   const navigate = useNavigate();
   const [siteConfigs, setSiteConfigs] = React.useState<Record<string, string>>({});
+  const [loadingConfig, setLoadingConfig] = React.useState(true);
   const searchQuery = searchParams.get('search') || '';
   const [justSharedId, setJustSharedId] = React.useState<string | null>(null);
   const { isJournalWishlisted, toggleJournalWishlist } = useWishlist();
@@ -42,11 +43,13 @@ export default function BlogHub() {
       .then(res => res.json())
       .then(data => {
         if (data.success) setSiteConfigs(data.data);
-      });
+      })
+      .catch(() => {})
+      .finally(() => setLoadingConfig(false));
   }, []);
 
   const defaultAuthorImage =
-    siteConfigs.blog_default_author_image ||
+    (!loadingConfig && siteConfigs.blog_default_author_image) ||
     'https://i.pravatar.cc/150?u=author';
 
   const featuredPost = useMemo(() => posts[0] ?? null, [posts]);
@@ -123,6 +126,15 @@ export default function BlogHub() {
       setTimeout(() => setSubmittingStatus('idle'), 3000);
     }
   };
+
+  if (loadingConfig) {
+    return (
+      <div className="pb-24 px-6 pt-16 animate-pulse space-y-8">
+        <div className="max-w-4xl mx-auto h-32 rounded-4xl bg-surface-container" />
+        <div className="max-w-7xl mx-auto h-[55vh] rounded-4xl bg-surface-container" />
+      </div>
+    );
+  }
 
   return (
     <div className="pb-32 space-y-16 md:space-y-24 bg-surface">

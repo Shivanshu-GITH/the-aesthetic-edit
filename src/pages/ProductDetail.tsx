@@ -18,6 +18,7 @@ export default function ProductDetail() {
   const [isShared, setIsShared] = useState(false);
   const [displayPrice, setDisplayPrice] = useState('');
   const [siteConfigs, setSiteConfigs] = useState<Record<string, string>>({});
+  const [loadingConfig, setLoadingConfig] = useState(true);
   
   const { product, related: autoRelated, loading, error } = useProduct(id);
 
@@ -27,7 +28,8 @@ export default function ProductDetail() {
       .then((data) => {
         if (data.success) setSiteConfigs(data.data);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoadingConfig(false));
   }, []);
 
   useEffect(() => { 
@@ -80,7 +82,7 @@ export default function ProductDetail() {
     }
   };
 
-  if (loading) return (
+  if (loading || loadingConfig) return (
     <div className="pb-32 bg-surface pt-16 md:pt-24 px-6">
       <div className="max-w-7xl mx-auto">
         <ProductDetailSkeleton />

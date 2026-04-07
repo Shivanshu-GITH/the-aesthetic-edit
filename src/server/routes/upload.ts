@@ -4,8 +4,6 @@ import { v2 as cloudinary } from 'cloudinary';
 import { rateLimit } from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
-import { promises as fs } from 'fs';
-import { randomUUID } from 'crypto';
 import { checkAdmin } from '../middleware/admin.js';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
@@ -14,12 +12,29 @@ const router = Router();
 
 // Configure Cloudinary explicitly with a function to ensure latest env vars
 const getCloudinary = () => {
+  const cloudinaryUrl = process.env.CLOUDINARY_URL;
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUD_NAME || '';
+  const apiKey = process.env.CLOUDINARY_API_KEY || process.env.CLOUDINARY_KEY || process.env.API_KEY || '';
+  const apiSecret = process.env.CLOUDINARY_API_SECRET || process.env.CLOUDINARY_SECRET || process.env.API_SECRET || '';
+
+  if (cloudinaryUrl) {
+    cloudinary.config({
+      cloudinary_url: cloudinaryUrl,
+      secure: true,
+    });
+    return cloudinary;
+  }
+
   cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret,
     secure: true
   });
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error('Cloudinary config missing. Set CLOUDINARY_URL or CLOUDINARY_CLOUD_NAME/CLOUDINARY_API_KEY/CLOUDINARY_API_SECRET.');
+  }
   return cloudinary;
 };
 
@@ -71,14 +86,20 @@ router.post('/', uploadLimit, checkAdmin, upload.single('image'), async (req, re
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
 
-    // Upload to Cloudinary using buffer
-    const b64 = Buffer.from(req.file.buffer).toString('base64');
-    let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
-    
     const cloud = getCloudinary();
-    const result = await cloud.uploader.upload(dataURI, {
-      folder: 'aesthetic-edit',
-      resource_type: 'auto'
+    const result = await new Promise<any>((resolve, reject) => {
+      const stream = cloud.uploader.upload_stream(
+        {
+          folder: 'aesthetic-edit',
+          resource_type: 'image',
+          timeout: 120000,
+        },
+        (error, uploaded) => {
+          if (error) return reject(error);
+          resolve(uploaded);
+        }
+      );
+      stream.end(req.file!.buffer);
     });
 
     res.json({ 
@@ -92,27 +113,11 @@ router.post('/', uploadLimit, checkAdmin, upload.single('image'), async (req, re
   }
 });
 
-router.post('/guide', uploadLimit, checkAdmin, guideUpload.single('guide'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: 'No file uploaded' });
-    }
-
-    const guidesDir = path.join(process.cwd(), 'uploads', 'guides');
-    await fs.mkdir(guidesDir, { recursive: true });
-    const fileName = `${randomUUID()}.pdf`;
-    const filePath = path.join(guidesDir, fileName);
-    await fs.writeFile(filePath, req.file.buffer);
-
-    res.json({
-      success: true,
-      url: `/api/leads/guide-file/${fileName}`,
-      public_id: null,
-    });
-  } catch (error: any) {
-    console.error('Guide upload error:', error);
-    res.status(500).json({ success: false, error: error.message || 'Guide upload failed' });
-  }
+router.post('/guide', uploadLimit, checkAdmin, async (req, res) => {
+  return res.status(410).json({
+    success: false,
+    error: 'Guide file uploads are disabled. Set a public HTTPS PDF URL in Admin > Site Config > Guide File URL.',
+  });
 });
 
 export default router;

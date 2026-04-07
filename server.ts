@@ -21,6 +21,15 @@ import geoRouter from './src/server/routes/geo.js';
 import homeShopRouter from './src/server/routes/home_shop.js'; 
 import uploadRouter from './src/server/routes/upload.js';
  
+const normalizeOrigin = (origin: string) => {
+  try {
+    const parsed = new URL(origin);
+    return parsed.origin;
+  } catch {
+    return origin.replace(/\/+$/, '');
+  }
+};
+
 async function startServer() { 
   // Validate required env vars at startup 
   const required = ['DATABASE_URL', 'JWT_SECRET', 'ADMIN_PASSWORD']; 
@@ -36,6 +45,8 @@ async function startServer() {
 
   const app = express(); 
   const PORT = Number(process.env.PORT) || 3000; 
+  // Required on reverse proxies (Render/Nginx) for correct client IP/rate-limit/cookie behavior.
+  app.set('trust proxy', 1);
  
   // 1. Initialize DB 
   await initDb(); 
@@ -55,12 +66,26 @@ async function startServer() {
       } 
     } : false, 
   })); 
-  const allowedOrigins = process.env.APP_URL 
-    ? [process.env.APP_URL] 
-    : ['http://localhost:3000', 'http://localhost:5173']; 
+  const envOrigins = (process.env.APP_URL || '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const allowedOrigins = new Set(
+    (envOrigins.length > 0 ? envOrigins : ['http://localhost:3000', 'http://localhost:5173'])
+      .map(normalizeOrigin)
+  );
  
   app.use(cors({ 
-    origin: allowedOrigins, 
+    origin: (origin, callback) => {
+      if (!origin) {
+        return callback(null, true);
+      }
+      const normalized = normalizeOrigin(origin);
+      if (allowedOrigins.has(normalized)) {
+        return callback(null, true);
+      }
+      return callback(new Error('CORS origin not allowed'));
+    },
     credentials: true, 
   })); 
   // Admin payloads (blog markdown, product arrays) can exceed 10kb.
