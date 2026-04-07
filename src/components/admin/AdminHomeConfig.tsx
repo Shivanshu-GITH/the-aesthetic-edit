@@ -11,9 +11,11 @@ export const AdminHomeConfig: React.FC = () => {
     findHereItems,
     shopCategories,
     blogCategories,
+    siteConfigs,
     adminFetch,
     refreshMoods,
     refreshFindHere,
+    refreshSiteConfig,
     isLoading,
     setIsLoading,
     showToast
@@ -137,8 +139,48 @@ export const AdminHomeConfig: React.FC = () => {
     }
   };
 
+  const handleUpdateConfig = async (key: string, value: string) => {
+    setIsLoading(true);
+    try {
+      const res = await adminFetch('/api/home-shop/admin/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value }),
+      });
+      if (res.ok) {
+        showToast('Config updated', 'success');
+        refreshSiteConfig();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to update config', 'error');
+      }
+    } catch {
+      showToast('Failed to update config', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-16">
+      {/* Home Branding Section */}
+      <div className="space-y-8">
+        <div className="flex items-center gap-3">
+          <Layout size={24} className="text-primary" />
+          <h2 className="text-3xl font-headline font-bold">Home Branding</h2>
+        </div>
+        <div className="bg-white rounded-[32px] border border-outline-variant/30 shadow-sm p-8 max-w-3xl">
+          <ImageUpload
+            label="Favicon (Upload or URL)"
+            value={siteConfigs.favicon_url || ''}
+            onChange={(url) => { void handleUpdateConfig('favicon_url', url); }}
+          />
+          <p className="text-[10px] text-outline mt-3">
+            Recommended: square PNG (32x32 or 64x64). This updates the browser tab icon site-wide.
+          </p>
+        </div>
+      </div>
+
       {/* Home Moods Section */}
       <div className="space-y-8">
         <div className="flex justify-between items-center">

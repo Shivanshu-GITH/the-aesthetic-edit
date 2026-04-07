@@ -51,6 +51,30 @@ function AppContent() {
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith('/admin');
 
+  React.useEffect(() => {
+    let isMounted = true;
+    fetch('/api/home-shop/config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted || !data?.success) return;
+        const faviconUrl = data?.data?.favicon_url;
+        if (!faviconUrl) return;
+
+        let link = document.querySelector("link[rel='icon']") as HTMLLinkElement | null;
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.head.appendChild(link);
+        }
+        link.href = faviconUrl;
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col noise-overlay w-full min-w-0 overflow-x-clip">
       {!isAdminPage && <Navbar />}
