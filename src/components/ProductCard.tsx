@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { ExternalLink } from 'lucide-react';
 import { Product } from '../types';
-import { formatPrice, getUserCurrencySync } from '../lib/currency';
+import { formatPrice } from '../lib/currency';
 import PinterestSaveButton from './PinterestSaveButton';
 import WishlistButton from './WishlistButton';
 
@@ -84,12 +84,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, index = 0, showPinte
           </Link>
         </div>
         <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-outline-variant/30">
-          <div className="flex flex-col">
-            <span className="text-base md:text-lg font-bold text-on-surface">{displayPrice}</span>
-            <span className="text-[8px] md:text-[10px] text-on-surface-variant/50 font-label uppercase tracking-widest"> 
-              {getUserCurrencySync()} 
-            </span> 
-          </div>
+          <span className="text-lg md:text-xl font-semibold tabular-nums tracking-tight text-on-surface">{displayPrice}</span>
           <button 
             onClick={handleAffiliateClick}
             className="text-outline hover:text-primary transition-colors cursor-pointer"

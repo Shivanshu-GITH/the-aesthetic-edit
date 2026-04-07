@@ -117,7 +117,7 @@ export default function ProductDetail() {
         type="product"
         productMeta={{
           price: product.price,
-          currency: "USD",
+          currency: "INR",
           availability: "in stock",
           retailer: product.retailer
         }}

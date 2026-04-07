@@ -142,6 +142,7 @@ export default function BlogCategory() {
                   images={Array.isArray(post.images) && post.images.length > 0 ? post.images : [post.image]}
                   aspectRatio="aspect-[4/5]"
                   className="rounded-none"
+                  imageClassName="object-contain"
                 />
               </Link>
               <div className="space-y-4 px-2">

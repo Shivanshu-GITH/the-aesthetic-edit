@@ -40,7 +40,11 @@ export const AdminProducts: React.FC = () => {
 
     const errors: Record<string, string> = {};
     if (!editingProduct.title) errors.title = 'Title is required';
-    if (!editingProduct.price) errors.price = 'Price is required';
+    if (editingProduct.price === '' || editingProduct.price === null || editingProduct.price === undefined) {
+      errors.price = 'Price is required';
+    } else if (Number.isNaN(Number(editingProduct.price))) {
+      errors.price = 'Price must be a valid number';
+    }
     if (!editingProduct.image) errors.image = 'Image URL is required';
     if (!editingProduct.category) errors.category = 'Category is required';
     if (!editingProduct.subCategory) errors.subCategory = 'SubCategory is required';
@@ -61,6 +65,7 @@ export const AdminProducts: React.FC = () => {
 
       const body = {
         ...editingProduct,
+        price: Number(editingProduct.price),
         vibes: editingProduct.vibe,
         sectionHeading: editingProduct.sectionHeading || null,
         sectionSubheading: editingProduct.sectionSubheading || null,
@@ -121,6 +126,7 @@ export const AdminProducts: React.FC = () => {
           onClick={() => {
             setEditingProduct({ 
               isActive: true, 
+              price: '',
               vibe: [],
               sectionHeading: '',
               sectionSubheading: '',
@@ -180,6 +186,7 @@ export const AdminProducts: React.FC = () => {
                         onClick={() => {
                           setEditingProduct({
                             ...p,
+                            price: String(p.price),
                             sectionHeading: p.sectionHeading || '',
                             sectionSubheading: p.sectionSubheading || '',
                             sectionDescription: p.sectionDescription || '',
@@ -268,14 +275,18 @@ export const AdminProducts: React.FC = () => {
 
                 {/* Price */}
                 <div className="space-y-2">
-                  <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Price</label>
+                  <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Price (INR)</label>
                   <input 
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={editingProduct?.price || ''}
-                    onChange={(e) => setEditingProduct((prev: any) => ({ ...prev, price: parseFloat(e.target.value) }))}
-                    placeholder="0.00"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (/^\d*\.?\d*$/.test(value)) {
+                        setEditingProduct((prev: any) => ({ ...prev, price: value }));
+                      }
+                    }}
+                    placeholder="e.g. 1999"
                     className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-sm"
                   />
                   {formErrors.price && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{formErrors.price}</p>}

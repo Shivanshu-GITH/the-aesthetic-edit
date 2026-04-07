@@ -271,6 +271,7 @@ export default function BlogHub() {
                     images={Array.isArray(post.images) && post.images.length > 0 ? post.images : [post.image]}
                     aspectRatio="aspect-4/5"
                     className="rounded-none"
+                    imageClassName="object-contain"
                   />
                   <div className="absolute top-4 md:top-6 left-4 md:left-6">
                     <span className="bg-accent-blush/90 backdrop-blur-sm px-3 md:px-4 py-1 md:py-1.5 rounded-full font-label text-[8px] md:text-[9px] uppercase tracking-widest font-bold text-primary">

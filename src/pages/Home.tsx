@@ -43,6 +43,8 @@ export default function Home() {
     fetchConfig();
   }, []);
 
+  const homeHeroImage = siteConfigs.home_hero_image || (!loadingConfig ? "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&q=80&w=1200" : '');
+
   const moodColumns = 5;
   const visibleMoods = showAllMoods ? moods : (moods.length > moodColumns ? moods.slice(0, Math.floor(moods.length / moodColumns) * moodColumns) : moods);
   const hasMoreMoods = !showAllMoods && moods.length > visibleMoods.length;
@@ -104,13 +106,15 @@ export default function Home() {
             className="relative aspect-4/5 rounded-4xl overflow-hidden shadow-2xl w-full max-w-100 mx-auto group bg-surface-container lg:block"
           >
             <div className="absolute inset-0 bg-linear-to-t from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10"></div>
-            <img 
-              src={siteConfigs.home_hero_image || "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&q=80&w=1200"} 
-              alt={siteConfigs.home_hero_title_line2 || "Minimalist Aesthetic Interior"} 
-              loading="lazy"
-              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-              referrerPolicy="no-referrer"
-            />
+            {homeHeroImage ? (
+              <img 
+                src={homeHeroImage} 
+                alt={siteConfigs.home_hero_title_line2 || "Minimalist Aesthetic Interior"} 
+                loading="lazy"
+                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                referrerPolicy="no-referrer"
+              />
+            ) : null}
           </motion.div>
         </div>
       </section>

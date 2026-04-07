@@ -1,9 +1,14 @@
-import { neon } from '@neondatabase/serverless'; 
-import { neonConfig } from '@neondatabase/serverless'; 
-import ws from 'ws'; 
-import dotenv from 'dotenv'; 
- 
-dotenv.config(); 
+import dns from 'node:dns';
+import { neon } from '@neondatabase/serverless';
+import { neonConfig } from '@neondatabase/serverless';
+import ws from 'ws';
+import dotenv from 'dotenv';
+
+// Prefer IPv4 for Neon HTTP/WebSocket endpoints — avoids ENOTFOUND on networks
+// where IPv6 DNS resolves but routing to api.*.neon.tech fails (common on Windows).
+dns.setDefaultResultOrder('ipv4first');
+
+dotenv.config();
  
 neonConfig.webSocketConstructor = ws; 
  

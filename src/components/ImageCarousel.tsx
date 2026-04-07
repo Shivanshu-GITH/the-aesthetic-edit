@@ -8,6 +8,7 @@ interface ImageCarouselProps {
   aspectRatio?: string;
   autoPlay?: boolean;
   interval?: number;
+  imageClassName?: string;
 }
 
 export default function ImageCarousel({ 
@@ -15,7 +16,8 @@ export default function ImageCarousel({
   className = '', 
   aspectRatio = 'aspect-square',
   autoPlay = false,
-  interval = 5000
+  interval = 5000,
+  imageClassName = 'object-cover'
 }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -61,7 +63,14 @@ export default function ImageCarousel({
   if (images.length === 1) {
     return (
       <div className={`relative overflow-hidden rounded-4xl bg-surface-container ${aspectRatio} ${className}`}>
-        <img src={images[0]} alt="" className="w-full h-full max-w-full object-cover" />
+        <img
+          src={images[0]}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          className={`w-full h-full max-w-full ${imageClassName}`}
+        />
       </div>
     );
   }
@@ -81,7 +90,10 @@ export default function ImageCarousel({
             x: { type: "spring", stiffness: 300, damping: 30 },
             opacity: { duration: 0.2 }
           }}
-          className="absolute inset-0 w-full h-full object-cover"
+          className={`absolute inset-0 w-full h-full ${imageClassName}`}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
         />
       </AnimatePresence>
 

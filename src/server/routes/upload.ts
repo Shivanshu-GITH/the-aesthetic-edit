@@ -4,6 +4,8 @@ import { v2 as cloudinary } from 'cloudinary';
 import { rateLimit } from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
+import { promises as fs } from 'fs';
+import { randomUUID } from 'crypto';
 import { checkAdmin } from '../middleware/admin.js';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
@@ -39,6 +41,24 @@ const upload = multer({
   fileFilter, 
 }); 
 
+const GUIDE_ALLOWED_MIME_TYPES = ['application/pdf', 'application/x-pdf', 'application/octet-stream'];
+
+const guideFileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const fileName = (file.originalname || '').toLowerCase();
+  const hasPdfExtension = fileName.endsWith('.pdf');
+  if (GUIDE_ALLOWED_MIME_TYPES.includes(file.mimetype) && hasPdfExtension) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only PDF files are allowed'));
+  }
+};
+
+const guideUpload = multer({
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: guideFileFilter,
+});
+
 const uploadLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 50, // limit each IP to 50 uploads per window
@@ -69,6 +89,29 @@ router.post('/', uploadLimit, checkAdmin, upload.single('image'), async (req, re
   } catch (error: any) {
     console.error('Upload error:', error);
     res.status(500).json({ success: false, error: error.message || 'Upload failed' });
+  }
+});
+
+router.post('/guide', uploadLimit, checkAdmin, guideUpload.single('guide'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No file uploaded' });
+    }
+
+    const guidesDir = path.join(process.cwd(), 'uploads', 'guides');
+    await fs.mkdir(guidesDir, { recursive: true });
+    const fileName = `${randomUUID()}.pdf`;
+    const filePath = path.join(guidesDir, fileName);
+    await fs.writeFile(filePath, req.file.buffer);
+
+    res.json({
+      success: true,
+      url: `/api/leads/guide-file/${fileName}`,
+      public_id: null,
+    });
+  } catch (error: any) {
+    console.error('Guide upload error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Guide upload failed' });
   }
 });
 

@@ -1,9 +1,9 @@
 /** 
- * Currency utility — detects user's currency via IP geolocation 
- * and fetches live exchange rates from open.er-api.com 
+ * Currency utility — stores product prices in INR and converts
+ * to user's local currency via IP geolocation + live rates.
  * 
  * IP geolocation: ipapi.co/json (free, no key) 
- * Exchange rates: open.er-api.com/v6/latest/USD (free, no key, updates daily) 
+ * Exchange rates: open.er-api.com/v6/latest/USD (free, no key, updates daily)
  */ 
  
 const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'INR', 'JPY', 'CAD', 'AUD', 'SGD', 'AED', 'MYR'] as const; 
@@ -158,39 +158,55 @@ export async function getUserCurrencyAsync(): Promise<SupportedCurrency> {
  * Use this for initial renders; the async version for accurate display. 
  */ 
 export function getUserCurrencySync(): SupportedCurrency { 
-  return cache?.currency ?? 'USD'; 
+  return cache?.currency ?? 'INR'; 
 } 
  
 /** 
- * Formats a USD price into the user's local currency. 
+ * Formats an INR price into the user's local currency.
  * Uses live rates when available, fallback rates otherwise. 
- * @param priceInUSD - Price in US dollars 
+ * @param priceInINR - Price in Indian Rupees
  */ 
-export async function formatPriceAsync(priceInUSD: number): Promise<string> { 
+export async function formatPriceAsync(priceInINR: number): Promise<string> { 
   const { currency, rates } = await ensureInit(); 
-  return applyFormat(priceInUSD, currency, rates); 
+  return applyFormat(priceInINR, currency, rates); 
 } 
  
 /** 
  * Synchronous price formatter — uses cached rates. 
  * Returns USD format if rates not yet loaded. 
- * @param priceInUSD - Price in US dollars 
+ * @param priceInINR - Price in Indian Rupees
  */ 
-export function formatPrice(priceInUSD: number): string { 
-  if (!cache) return `₹${(priceInUSD * FALLBACK_RATES.INR).toFixed(0)}`; 
-  return applyFormat(priceInUSD, cache.currency, cache.rates); 
+export function formatPrice(priceInINR: number): string {
+  if (!cache) return applyFormat(priceInINR, 'INR', FALLBACK_RATES);
+  return applyFormat(priceInINR, cache.currency, cache.rates); 
 } 
  
-function applyFormat(priceInUSD: number, currency: SupportedCurrency, rates: Record<string, number>): string { 
-  const rate = rates[currency] ?? FALLBACK_RATES[currency] ?? 1; 
-  const converted = priceInUSD * rate; 
-  const locale = CURRENCY_LOCALE_MAP[currency] ?? 'en-US'; 
- 
-  return new Intl.NumberFormat(locale, { 
-    style: 'currency', 
-    currency, 
-    maximumFractionDigits: currency === 'JPY' ? 0 : 0, 
-  }).format(converted); 
+function applyFormat(priceInINR: number, currency: SupportedCurrency, rates: Record<string, number>): string {
+  const safePrice = Number(priceInINR);
+  const normalizedPrice = Number.isFinite(safePrice) ? safePrice : 0;
+
+  const inrRateRaw = Number(rates.INR ?? FALLBACK_RATES.INR);
+  const targetRateRaw = Number(rates[currency] ?? FALLBACK_RATES[currency] ?? 1);
+  const inrRate = Number.isFinite(inrRateRaw) && inrRateRaw > 0 ? inrRateRaw : FALLBACK_RATES.INR;
+  const targetRate = Number.isFinite(targetRateRaw) && targetRateRaw > 0 ? targetRateRaw : 1;
+
+  const baseInUSD = normalizedPrice / inrRate;
+  const converted = baseInUSD * targetRate;
+  const locale = CURRENCY_LOCALE_MAP[currency] ?? 'en-US';
+
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: currency === 'JPY' ? 0 : 0,
+    }).format(converted);
+  } catch {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(normalizedPrice);
+  }
 } 
  
 /** 

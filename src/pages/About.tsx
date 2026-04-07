@@ -20,6 +20,9 @@ export default function About() {
       .finally(() => setLoading(false));
   }, []);
 
+  const aboutHeroImage = siteConfigs.about_hero_image || (!loading ? "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=800" : '');
+  const aboutStoryImage = siteConfigs.about_story_image || (!loading ? "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&q=80&w=800" : '');
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -73,13 +76,15 @@ export default function About() {
               transition={{ duration: 1 }}
               className="aspect-square rounded-full overflow-hidden border-8 md:border-12 border-white shadow-2xl relative z-10 bg-surface-container"
             >
-              <img 
-                src={siteConfigs.about_hero_image || "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=800"} 
-                alt={siteConfigs.about_hero_signature || "Anjali"} 
-                loading="lazy"
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+              {aboutHeroImage ? (
+                <img 
+                  src={aboutHeroImage} 
+                  alt={siteConfigs.about_hero_signature || "Anjali"} 
+                  loading="lazy"
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : null}
             </motion.div>
             <div className="absolute -bottom-6 md:-bottom-8 right-0 lg:-right-4 font-signature text-4xl md:text-5xl text-primary transform -rotate-12 z-20">
               {siteConfigs.about_hero_signature || "Anjali"}
@@ -132,13 +137,15 @@ export default function About() {
               </div>
             </div>
             <div className="relative aspect-4/5 rounded-4xl overflow-hidden shadow-2xl border-8 md:border-12 border-white bg-surface-container">
-              <img 
-                src={siteConfigs.about_story_image || "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&q=80&w=800"} 
-                alt="Aesthetic Lifestyle" 
-                loading="lazy"
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+              {aboutStoryImage ? (
+                <img 
+                  src={aboutStoryImage} 
+                  alt="Aesthetic Lifestyle" 
+                  loading="lazy"
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : null}
             </div>
           </div>
         </div>

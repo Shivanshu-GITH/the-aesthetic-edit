@@ -19,6 +19,7 @@ export default function FreeGuide() {
   const [errors, setErrors] = React.useState<{ name?: string, email?: string }>({});
 
   const [isLoading, setIsLoading] = React.useState(false);
+  const [guideDownloadUrl, setGuideDownloadUrl] = React.useState('');
 
   useEffect(() => {
     fetch('/api/home-shop/config')
@@ -74,10 +75,17 @@ export default function FreeGuide() {
         body: JSON.stringify({ name, email }),
       });
       
+      const result = await response.json();
+
       if (response.ok) {
+        const downloadUrl = result?.data?.guideUrl || siteConfigs.free_guide_file_url || '';
+        setGuideDownloadUrl(downloadUrl);
         setSubmitted(true);
+        if (downloadUrl) {
+          window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+        }
       } else {
-        alert('Something went wrong. Please try again.');
+        alert(result?.error || 'Something went wrong. Please try again.');
       }
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -90,6 +98,8 @@ export default function FreeGuide() {
   const pinDescription =
     siteConfigs.free_guide_pinterest_description ||
     'Free Pinterest Growth Guide by The Aesthetic Edit';
+
+  const isInstantDownload = Boolean(guideDownloadUrl || siteConfigs.free_guide_file_url);
 
   return (
     <div className="min-h-screen bg-surface relative overflow-hidden">
@@ -264,15 +274,27 @@ export default function FreeGuide() {
               
               <div className="space-y-4">
                 <h2 className="text-4xl font-headline font-bold text-on-surface">
-                  {siteConfigs.free_guide_success_title || 'Your guide is on its way! ✨'}
+                  {siteConfigs.free_guide_success_title || (isInstantDownload ? 'Your guide is ready! ✨' : 'Your guide is on its way! ✨')}
                 </h2>
                 <p className="text-on-surface-variant font-body leading-relaxed max-w-sm mx-auto">
                   {siteConfigs.free_guide_success_body ||
-                    'Check your inbox for an email from Anjali. In the meantime, explore the shop or read the journal.'}
+                    (isInstantDownload
+                      ? 'Your download should open automatically. If not, use the button below to download instantly.'
+                      : 'Check your inbox for an email from Anjali. In the meantime, explore the shop or read the journal.')}
                 </p>
               </div>
 
               <div className="flex flex-col gap-4 max-w-xs mx-auto w-full">
+                {guideDownloadUrl && (
+                  <a
+                    href={guideDownloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-primary text-white py-4 rounded-2xl font-label text-sm uppercase tracking-widest font-bold hover:bg-primary-hover transition-all shadow-xl shadow-primary/20"
+                  >
+                    {siteConfigs.free_guide_download_cta || 'Download Guide Now'}
+                  </a>
+                )}
                 <Link 
                   to="/shop" 
                   className="bg-primary text-white py-4 rounded-2xl font-label text-sm uppercase tracking-widest font-bold hover:bg-primary-hover transition-all shadow-xl shadow-primary/20"
