@@ -84,6 +84,15 @@ export function useFetch<T>(
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onCacheCleared = () => {
+      if (url) fetchData(true);
+    };
+    window.addEventListener('ae_cache_cleared', onCacheCleared);
+    return () => window.removeEventListener('ae_cache_cleared', onCacheCleared);
+  }, [url, fetchData]);
+
   return { data, loading, error, meta, refetch: () => fetchData(true) };
 }
 

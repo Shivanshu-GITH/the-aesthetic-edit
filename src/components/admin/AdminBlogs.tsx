@@ -78,7 +78,11 @@ export const AdminBlogs: React.FC = () => {
         images: Array.isArray(editingBlog.images) ? editingBlog.images : (editingBlog.image ? [editingBlog.image] : []),
         recommendedProducts: Array.isArray(editingBlog.recommendedProducts) ? editingBlog.recommendedProducts : [],
         relatedPosts: Array.isArray(editingBlog.relatedPosts) ? editingBlog.relatedPosts : [],
-        isPublished: editingBlog.isPublished ?? true
+        isPublished: editingBlog.isPublished ?? true,
+        sectionHeading: editingBlog.sectionHeading || null,
+        sectionSubheading: editingBlog.sectionSubheading || null,
+        sectionDescription: editingBlog.sectionDescription || null,
+        sectionCtaText: editingBlog.sectionCtaText || null
       };
 
       const res = await adminFetch(url, {
@@ -132,14 +136,18 @@ export const AdminBlogs: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const res = await adminFetch(`/api/blog/admin/posts/${id}`, {
-        method: 'PUT',
+      const res = await adminFetch(`/api/blog/admin/posts/${id}/publish`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...post, isPublished: !post.isPublished })
+        body: JSON.stringify({ isPublished: !post.isPublished })
       });
       if (res.ok) {
         showToast('Status updated', 'success');
+        clearFetchCache();
         refreshBlogPosts();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to update status', 'error');
       }
     } catch (err) {
       showToast('Failed to update status', 'error');
@@ -158,7 +166,11 @@ export const AdminBlogs: React.FC = () => {
               isPublished: true, 
               author: 'Elena Muse', 
               date: new Date().toISOString().split('T')[0],
-              recommendedProducts: []
+              recommendedProducts: [],
+              sectionHeading: '',
+              sectionSubheading: '',
+              sectionDescription: '',
+              sectionCtaText: ''
             });
             setBlogFormErrors({});
             setIsSlugManual(false);
@@ -209,7 +221,13 @@ export const AdminBlogs: React.FC = () => {
                     <div className="flex justify-end gap-2">
                       <button 
                         onClick={() => {
-                          setEditingBlog({ ...post });
+                          setEditingBlog({ 
+                            ...post,
+                            sectionHeading: post.sectionHeading || '',
+                            sectionSubheading: post.sectionSubheading || '',
+                            sectionDescription: post.sectionDescription || '',
+                            sectionCtaText: post.sectionCtaText || ''
+                          });
                           setBlogFormErrors({});
                           setIsSlugManual(true);
                           setIsBlogModalOpen(true);
@@ -424,8 +442,55 @@ export const AdminBlogs: React.FC = () => {
                     {blogFormErrors.content && <p className="text-[9px] text-red-500 uppercase font-bold tracking-widest">{blogFormErrors.content}</p>}
                   </div>
 
-                  <div className="space-y-4 md:col-span-2">
-                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Recommended Products</label>
+                  <div className="space-y-6 md:col-span-2 border-t border-outline-variant/10 pt-8">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline flex items-center gap-2">
+                      <Plus size={16} className="text-primary" /> Recommended Products Section
+                    </label>
+                    
+                    {/* Section Content Customization */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-surface-container/30 rounded-3xl border border-outline-variant/20">
+                      <div className="space-y-2">
+                        <label className="font-label text-[10px] uppercase tracking-widest font-bold text-outline">Section Subheading (e.g. CURATED PICKS)</label>
+                        <input 
+                          type="text"
+                          value={editingBlog?.sectionSubheading || ''}
+                          onChange={(e) => setEditingBlog((prev: any) => ({ ...prev, sectionSubheading: e.target.value }))}
+                          placeholder="CURATED PICKS"
+                          className="px-4 py-2.5 rounded-xl bg-white border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-xs"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="font-label text-[10px] uppercase tracking-widest font-bold text-outline">Section Heading (e.g. Complete the Look)</label>
+                        <input 
+                          type="text"
+                          value={editingBlog?.sectionHeading || ''}
+                          onChange={(e) => setEditingBlog((prev: any) => ({ ...prev, sectionHeading: e.target.value }))}
+                          placeholder="Complete the Look"
+                          className="px-4 py-2.5 rounded-xl bg-white border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-xs"
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="font-label text-[10px] uppercase tracking-widest font-bold text-outline">Section Description</label>
+                        <textarea 
+                          rows={2}
+                          value={editingBlog?.sectionDescription || ''}
+                          onChange={(e) => setEditingBlog((prev: any) => ({ ...prev, sectionDescription: e.target.value }))}
+                          placeholder="Hand-selected pieces that perfectly complement your current aesthetic..."
+                          className="px-4 py-2.5 rounded-xl bg-white border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-xs resize-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="font-label text-[10px] uppercase tracking-widest font-bold text-outline">Section CTA Text</label>
+                        <input 
+                          type="text"
+                          value={editingBlog?.sectionCtaText || ''}
+                          onChange={(e) => setEditingBlog((prev: any) => ({ ...prev, sectionCtaText: e.target.value }))}
+                          placeholder="VIEW ALL COLLECTION"
+                          className="px-4 py-2.5 rounded-xl bg-white border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-xs"
+                        />
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-75 overflow-y-auto p-4 border border-outline-variant/20 rounded-2xl bg-surface-container/20">
                       {allProducts.filter((p: any) => p.isActive).map((p: any) => {
                         const isSelected = editingBlog?.recommendedProducts?.includes(p.id);
@@ -446,6 +511,39 @@ export const AdminBlogs: React.FC = () => {
                             <div className="min-w-0">
                               <p className="text-xs font-bold truncate">{p.title}</p>
                               <p className="text-[9px] text-primary">{productPrices[p.id] || formatPrice(p.price)}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Related Blogs Section */}
+                  <div className="space-y-6 md:col-span-2 border-t border-outline-variant/10 pt-8">
+                    <label className="font-label text-xs uppercase tracking-widest font-bold text-outline flex items-center gap-2">
+                      <Plus size={16} className="text-primary" /> Related Blogs Section (Bottom)
+                    </label>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-75 overflow-y-auto p-4 border border-outline-variant/20 rounded-2xl bg-surface-container/20">
+                      {allBlogPosts.filter((b: any) => b.id !== editingBlog?.id).map((b: any) => {
+                        const isSelected = editingBlog?.relatedPosts?.includes(b.id);
+                        return (
+                          <label key={b.id} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-outline-variant/20 cursor-pointer hover:border-primary transition-all">
+                            <input 
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                const current = editingBlog?.relatedPosts || [];
+                                const next = e.target.checked 
+                                  ? [...current, b.id] 
+                                  : current.filter((id: any) => id !== b.id);
+                                setEditingBlog((prev: any) => ({ ...prev, relatedPosts: next }));
+                              }}
+                              className="w-4 h-4 rounded border-outline-variant/30 text-primary focus:ring-primary"
+                            />
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold truncate">{b.title}</p>
+                              <p className="text-[9px] text-outline truncate">{b.category}</p>
                             </div>
                           </label>
                         );

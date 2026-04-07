@@ -6,7 +6,6 @@ import { Product } from '../types';
 import { formatPrice, getUserCurrencySync } from '../lib/currency';
 import PinterestSaveButton from './PinterestSaveButton';
 import WishlistButton from './WishlistButton';
-import ImageCarousel from './ImageCarousel';
 
 interface ProductCardProps {
   product: Product;
@@ -49,11 +48,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, index = 0, showPinte
       className="group bg-white rounded-4xl overflow-hidden border border-outline-variant/30 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
     >
       <div className="aspect-4/5 relative overflow-hidden bg-surface-container">
-        <Link to={`/shop/product/${product.id}`}>
-          <ImageCarousel
-            images={Array.isArray(product.images) && product.images.length > 0 ? product.images : [product.image]}
-            aspectRatio="aspect-4/5"
-            className="rounded-none"
+        <Link to={`/shop/product/${product.id}`} className="block w-full h-full">
+          <img 
+            src={product.image} 
+            alt={product.title} 
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
         </Link>
         

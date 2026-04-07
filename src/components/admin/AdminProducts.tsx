@@ -61,7 +61,11 @@ export const AdminProducts: React.FC = () => {
 
       const body = {
         ...editingProduct,
-        vibes: editingProduct.vibe
+        vibes: editingProduct.vibe,
+        sectionHeading: editingProduct.sectionHeading || null,
+        sectionSubheading: editingProduct.sectionSubheading || null,
+        sectionDescription: editingProduct.sectionDescription || null,
+        sectionCtaText: editingProduct.sectionCtaText || null
       };
 
       const res = await adminFetch(url, {
@@ -115,7 +119,14 @@ export const AdminProducts: React.FC = () => {
         <h2 className="text-3xl font-headline font-bold">Manage Products</h2>
         <button 
           onClick={() => {
-            setEditingProduct({ isActive: true, vibe: [] });
+            setEditingProduct({ 
+              isActive: true, 
+              vibe: [],
+              sectionHeading: '',
+              sectionSubheading: '',
+              sectionDescription: '',
+              sectionCtaText: ''
+            });
             setFormErrors({});
             setIsProductModalOpen(true);
           }}
@@ -167,7 +178,13 @@ export const AdminProducts: React.FC = () => {
                     <div className="flex justify-end gap-2">
                       <button 
                         onClick={() => {
-                          setEditingProduct(p);
+                          setEditingProduct({
+                            ...p,
+                            sectionHeading: p.sectionHeading || '',
+                            sectionSubheading: p.sectionSubheading || '',
+                            sectionDescription: p.sectionDescription || '',
+                            sectionCtaText: p.sectionCtaText || ''
+                          });
                           setFormErrors({});
                           setIsProductModalOpen(true);
                         }}
@@ -484,10 +501,54 @@ export const AdminProducts: React.FC = () => {
                 </div>
 
                 {/* Related Products (Complete the Look) */}
-                <div className="space-y-4 md:col-span-2 border-t border-outline-variant/10 pt-8">
+                <div className="space-y-6 md:col-span-2 border-t border-outline-variant/10 pt-8">
                   <div className="flex items-center gap-2 text-primary mb-2">
                     <Plus size={16} />
                     <label className="font-label text-xs uppercase tracking-widest font-bold">Complete the Look (Related Products)</label>
+                  </div>
+                  
+                  {/* Section Content Customization */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-surface-container/30 rounded-3xl border border-outline-variant/20">
+                    <div className="space-y-2">
+                      <label className="font-label text-[10px] uppercase tracking-widest font-bold text-outline">Section Subheading (e.g. CURATED PICKS)</label>
+                      <input 
+                        type="text"
+                        value={editingProduct?.sectionSubheading || ''}
+                        onChange={(e) => setEditingProduct((prev: any) => ({ ...prev, sectionSubheading: e.target.value }))}
+                        placeholder="CURATED PICKS"
+                        className="px-4 py-2.5 rounded-xl bg-white border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-xs"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-[10px] uppercase tracking-widest font-bold text-outline">Section Heading (e.g. Complete the Look)</label>
+                      <input 
+                        type="text"
+                        value={editingProduct?.sectionHeading || ''}
+                        onChange={(e) => setEditingProduct((prev: any) => ({ ...prev, sectionHeading: e.target.value }))}
+                        placeholder="Complete the Look"
+                        className="px-4 py-2.5 rounded-xl bg-white border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-xs"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="font-label text-[10px] uppercase tracking-widest font-bold text-outline">Section Description</label>
+                      <textarea 
+                        rows={2}
+                        value={editingProduct?.sectionDescription || ''}
+                        onChange={(e) => setEditingProduct((prev: any) => ({ ...prev, sectionDescription: e.target.value }))}
+                        placeholder="Hand-selected pieces that perfectly complement your current aesthetic..."
+                        className="px-4 py-2.5 rounded-xl bg-white border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-xs resize-none"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-label text-[10px] uppercase tracking-widest font-bold text-outline">Section CTA Text</label>
+                      <input 
+                        type="text"
+                        value={editingProduct?.sectionCtaText || ''}
+                        onChange={(e) => setEditingProduct((prev: any) => ({ ...prev, sectionCtaText: e.target.value }))}
+                        placeholder="VIEW ALL COLLECTION"
+                        className="px-4 py-2.5 rounded-xl bg-white border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-xs"
+                      />
+                    </div>
                   </div>
                   
                   {/* Search and Selection */}
@@ -497,7 +558,7 @@ export const AdminProducts: React.FC = () => {
                         type="text"
                         value={relatedSearch}
                         onChange={(e) => setRelatedSearch(e.target.value)}
-                        placeholder="Search products to add..."
+                        placeholder="Search products to add to this section..."
                         className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all w-full text-sm"
                       />
                     </div>

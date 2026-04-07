@@ -380,7 +380,18 @@ export default function Shop() {
                   </p>
                 </div>
                 <button 
-                  onClick={() => updateFilters({ category: 'All', subCategory: 'All', vibe: 'All', search: '', maxPrice: null, topRated: null })}
+                  onClick={() => {
+                    setLocalSearchQuery('');
+                    updateFilters({ 
+                      category: 'All', 
+                      subCategory: 'All', 
+                      vibe: 'All', 
+                      search: '', 
+                      maxPrice: null, 
+                      topRated: null,
+                      trending: null
+                    });
+                  }}
                   className="text-primary font-label text-[10px] uppercase tracking-widest font-bold border-b border-primary pb-1"
                 >
                   Clear all filters

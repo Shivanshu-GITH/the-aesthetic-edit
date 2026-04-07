@@ -46,6 +46,10 @@ export const initDb = async () => {
       is_trending BOOLEAN DEFAULT FALSE, 
       is_top_rated BOOLEAN DEFAULT FALSE, 
       related_products JSONB DEFAULT '[]'::jsonb,
+      section_heading TEXT,
+      section_subheading TEXT,
+      section_description TEXT,
+      section_cta_text TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW() 
     ) 
   `; 
@@ -80,11 +84,38 @@ export const initDb = async () => {
       read_time TEXT NOT NULL, 
       recommended_products JSONB DEFAULT '[]', 
       related_posts JSONB DEFAULT '[]',
+      section_heading TEXT,
+      section_subheading TEXT,
+      section_description TEXT,
+      section_cta_text TEXT,
+      related_posts_heading TEXT,
+      related_posts_subheading TEXT,
+      related_posts_description TEXT,
+      related_posts_cta_text TEXT,
       is_published BOOLEAN DEFAULT TRUE, 
       created_at TIMESTAMPTZ DEFAULT NOW() 
     ) 
   `; 
- 
+
+  // Add columns if they don't exist (Migration)
+  try {
+    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS section_heading TEXT`;
+    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS section_subheading TEXT`;
+    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS section_description TEXT`;
+    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS section_cta_text TEXT`;
+
+    await sql`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS section_heading TEXT`;
+    await sql`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS section_subheading TEXT`;
+    await sql`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS section_description TEXT`;
+    await sql`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS section_cta_text TEXT`;
+
+    await sql`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS related_posts_heading TEXT`;
+    await sql`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS related_posts_subheading TEXT`;
+    await sql`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS related_posts_description TEXT`;
+    await sql`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS related_posts_cta_text TEXT`;
+  } catch (err) {
+    console.error('Migration error:', err);
+  } 
   // Wishlist table 
   await sql` 
     CREATE TABLE IF NOT EXISTS wishlist_items ( 

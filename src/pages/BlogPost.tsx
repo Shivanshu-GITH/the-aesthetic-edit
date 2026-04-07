@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Clock, Share2, Heart, ArrowRight, ShoppingBag, Check } from 'lucide-react';
+import { Clock, Share2, Heart, ArrowRight, ShoppingBag, Check, Sparkles } from 'lucide-react';
 import { formatPrice } from '../lib/currency';
 import SEOMeta from '../components/SEOMeta';
 import ImageCarousel from '../components/ImageCarousel';
@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 
 export default function BlogPost() {
-  const { category, slug } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const [showAllRecommended, setShowAllRecommended] = useState(false);
@@ -95,23 +95,31 @@ export default function BlogPost() {
     window.scrollTo(0, 0);
   }, [slug]);
 
-  if (loading) return <BlogPostSkeleton />;
+  if (loading) return (
+    <div className="pb-32 bg-surface pt-16 md:pt-24 px-6">
+      <div className="max-w-7xl mx-auto">
+        <BlogPostSkeleton />
+      </div>
+    </div>
+  );
 
   if (error || !post) return (
     <div className="p-16 md:p-24 text-center space-y-6">
-      <h2 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">Post not found</h2>
+      <h2 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">Article not found</h2>
       <Link to="/blog" className="text-primary font-label text-xs uppercase tracking-widest font-bold border-b border-primary">
-        Back to Blog
+        Back to Journal
       </Link>
     </div>
   );
 
+  const finalRelated = relatedPosts || [];
+  const relatedColumns = 3;
   const visibleRelated = showAllRelated 
-    ? relatedPosts 
-    : (relatedPosts.length > 3 
-        ? relatedPosts.slice(0, 3)
-        : relatedPosts);
-  const hasMoreRelated = !showAllRelated && relatedPosts.length > visibleRelated.length;
+    ? finalRelated 
+    : (finalRelated.length > relatedColumns 
+        ? finalRelated.slice(0, Math.floor(finalRelated.length / relatedColumns) * relatedColumns)
+        : finalRelated);
+  const hasMoreRelated = !showAllRelated && finalRelated.length > visibleRelated.length;
 
   return (
     <div className="pb-32 bg-surface overflow-x-hidden">
@@ -182,6 +190,7 @@ export default function BlogPost() {
           <ImageCarousel 
             images={post.images && post.images.length > 0 ? post.images : [post.image]} 
             aspectRatio="aspect-[21/9]"
+            autoPlay={true}
           />
         </motion.div>
       </section>
@@ -200,7 +209,24 @@ export default function BlogPost() {
             </div>
 
             <div className="lg:hidden space-y-8 py-12 border-t border-outline-variant/30">
-              <h2 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">Shop the Look</h2>
+              {recommendedProducts.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-primary">
+                    <ShoppingBag size={18} />
+                    <span className="font-label text-[10px] uppercase tracking-widest font-bold">
+                      {post.sectionSubheading || 'Curated Picks'}
+                    </span>
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-headline font-bold text-on-surface">
+                    {post.sectionHeading || 'Shop the Look'}
+                  </h2>
+                  {post.sectionDescription && (
+                    <p className="text-sm text-on-surface-variant font-serif italic">
+                      {post.sectionDescription}
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
                 {recommendedProducts.map((product) => (
                   <div key={product.id} className="group space-y-4 bg-white p-5 md:p-6 rounded-4xl border border-outline-variant/30 shadow-sm">
@@ -241,54 +267,99 @@ export default function BlogPost() {
           {/* Sticky Sidebar */}
           <aside className="hidden lg:block lg:col-span-4">
             <div className="sticky top-32 space-y-8">
-              <div className="bg-white rounded-4xl p-8 border border-outline-variant/30 shadow-sm space-y-6">
-                <div className="flex items-center gap-3">
-                  <ShoppingBag size={20} className="text-primary" />
-                  <h2 className="text-xl font-headline font-bold text-on-surface">Shop the Look</h2>
-                </div>
-                <p className="text-[9px] font-label text-outline uppercase tracking-widest leading-relaxed">
-                  * Affiliate links. I may earn a commission if you make a purchase.
-                </p>
-                
-                <div className="space-y-6">
-                  {recommendedProducts.map((p, i) => (
-                    <div key={p.id} className={cn("pt-6 space-y-4", i !== 0 && "border-t border-outline-variant/20")}>
-                      <div className="flex gap-4">
-                        <div className="w-20 h-20 rounded-2xl overflow-hidden bg-surface-container shrink-0">
-                          <img 
-                            src={p.image} 
-                            alt={p.title} 
-                            loading="lazy"
-                            className="w-full h-full object-cover"
-                            referrerPolicy="no-referrer"
-                          />
-                        </div>
-                        <div className="flex flex-col justify-center min-w-0">
-                          <h3 className="text-sm font-headline font-bold truncate">{p.title}</h3>
-                          <p className="text-primary text-sm font-bold mt-1">{productPrices[p.id] || formatPrice(p.price)}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-3">
-                        <button 
-                          onClick={() => handleAffiliateClick(p)}
-                          className="flex-1 bg-primary text-white py-2.5 rounded-xl font-label text-[9px] uppercase tracking-widest font-bold hover:bg-primary-hover transition-all"
-                        >
-                          Shop Now
-                        </button>
-                        <PinterestSaveButton product={p} variant="card" />
-                      </div>
+              {recommendedProducts.length > 0 && (
+                <div className="bg-white rounded-4xl p-8 border border-outline-variant/30 shadow-sm space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <ShoppingBag size={20} className="text-primary" />
+                      <span className="font-label text-[10px] uppercase tracking-widest font-bold text-primary">
+                        {post.sectionSubheading || 'Curated Picks'}
+                      </span>
                     </div>
-                  ))}
+                    <h2 className="text-xl font-headline font-bold text-on-surface">
+                      {post.sectionHeading || 'Shop the Look'}
+                    </h2>
+                    {post.sectionDescription && (
+                      <p className="text-xs text-on-surface-variant font-serif italic leading-relaxed">
+                        {post.sectionDescription}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-[9px] font-label text-outline uppercase tracking-widest leading-relaxed">
+                    * Affiliate links. I may earn a commission if you make a purchase.
+                  </p>
+                  
+                  <div className="space-y-6">
+                    {recommendedProducts.map((p, i) => (
+                      <div key={p.id} className={cn("pt-6 space-y-4", i !== 0 && "border-t border-outline-variant/20")}>
+                        <div className="flex gap-4">
+                          <div className="w-20 h-20 rounded-2xl overflow-hidden bg-surface-container shrink-0">
+                            <img 
+                              src={p.image} 
+                              alt={p.title} 
+                              loading="lazy"
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                          <div className="flex flex-col justify-center min-w-0">
+                            <h3 className="text-sm font-headline font-bold truncate">{p.title}</h3>
+                            <p className="text-primary text-sm font-bold mt-1">{productPrices[p.id] || formatPrice(p.price)}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <button 
+                            onClick={() => handleAffiliateClick(p)}
+                            className="flex-1 bg-primary text-white py-2.5 rounded-xl font-label text-[9px] uppercase tracking-widest font-bold hover:bg-primary-hover transition-all"
+                          >
+                            Shop Now
+                          </button>
+                          <PinterestSaveButton product={p} variant="card" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {post.sectionCtaText && (
+                    <div className="pt-4 border-t border-outline-variant/20">
+                      <Link to="/shop" className="group flex items-center justify-between gap-2 text-primary font-label text-[10px] uppercase tracking-widest font-bold">
+                        {post.sectionCtaText}
+                        <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                      </Link>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           </aside>
         </div>
       </article>
 
       {/* Related Posts */}
-      <section className="max-w-7xl mx-auto px-6 mt-24 md:mt-40 pt-16 md:pt-24 border-t border-outline-variant/30">
-        <h2 className="text-2xl md:text-3xl font-headline font-bold mb-10 md:mb-12 text-on-surface">You Might Also Love</h2>
+      <section className="max-w-7xl mx-auto px-6 mt-16 md:mt-24 pt-12 md:pt-16 border-t border-outline-variant/30">
+        <div className="max-w-2xl mb-12 md:mb-16 space-y-6">
+          <div className="flex items-center gap-3 text-primary">
+            <Sparkles size={20} fill="currentColor" />
+            <span className="font-label text-xs uppercase tracking-[0.4em] font-bold">
+              Journal
+            </span>
+          </div>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+            <div className="space-y-4">
+              <h2 className="text-4xl md:text-6xl font-headline font-bold text-on-surface leading-tight">
+                You Might Also Love
+              </h2>
+            </div>
+            <Link to="/blog" className="group flex items-center gap-3 text-primary font-label text-xs uppercase tracking-[0.2em] font-bold whitespace-nowrap">
+              <span className="border-b-2 border-primary/20 group-hover:border-primary transition-all pb-1">
+                See More Inspiration
+              </span>
+              <div className="w-8 h-8 rounded-full bg-accent-blush flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                <ArrowRight size={14} />
+              </div>
+            </Link>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
           {visibleRelated.map((related) => (
             <div key={related.id} className="group bg-white p-4 rounded-4xl border border-outline-variant/30 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">

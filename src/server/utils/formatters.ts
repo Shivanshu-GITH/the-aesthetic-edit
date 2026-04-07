@@ -14,12 +14,19 @@ export const formatProduct = (p: any) => ({
   isTrending: p.is_trending === true || p.is_trending === 1, 
   isTopRated: p.is_top_rated === true || p.is_top_rated === 1, 
   relatedProducts: Array.isArray(p.related_products) ? p.related_products : [],
+  sectionHeading: p.section_heading,
+  sectionSubheading: p.section_subheading,
+  sectionDescription: p.section_description,
+  sectionCtaText: p.section_cta_text,
 }); 
+
+/** Prefer snake_case (Postgres); fall back to camelCase if the driver ever returns that shape. */
+const blogSection = (b: any, snake: string, camel: string) => b[snake] ?? b[camel];
 
 export const formatBlogPost = (b: any) => ({ 
   id: b.id, 
   slug: b.slug, 
-  categorySlug: b.category_slug, 
+  categorySlug: b.category_slug ?? b.categorySlug, 
   title: b.title, 
   excerpt: b.excerpt, 
   content: b.content, 
@@ -27,10 +34,22 @@ export const formatBlogPost = (b: any) => ({
   images: Array.isArray(b.images) ? b.images : [],
   category: b.category, 
   author: b.author, 
-  authorImage: b.author_image,
+  authorImage: b.author_image ?? b.authorImage,
   date: b.date, 
-  readTime: b.read_time, 
-  recommendedProducts: Array.isArray(b.recommended_products) ? b.recommended_products : [], 
-  relatedPosts: Array.isArray(b.related_posts) ? b.related_posts : [],
-  isPublished: b.is_published === true || b.is_published === 1 
+  readTime: b.read_time ?? b.readTime, 
+  recommendedProducts: Array.isArray(b.recommended_products)
+    ? b.recommended_products
+    : (Array.isArray(b.recommendedProducts) ? b.recommendedProducts : []),
+  relatedPosts: Array.isArray(b.related_posts)
+    ? b.related_posts
+    : (Array.isArray(b.relatedPosts) ? b.relatedPosts : []),
+  isPublished: b.is_published === true || b.is_published === 1,
+  sectionHeading: blogSection(b, 'section_heading', 'sectionHeading'),
+  sectionSubheading: blogSection(b, 'section_subheading', 'sectionSubheading'),
+  sectionDescription: blogSection(b, 'section_description', 'sectionDescription'),
+  sectionCtaText: blogSection(b, 'section_cta_text', 'sectionCtaText'),
+  relatedPostsHeading: blogSection(b, 'related_posts_heading', 'relatedPostsHeading'),
+  relatedPostsSubheading: blogSection(b, 'related_posts_subheading', 'relatedPostsSubheading'),
+  relatedPostsDescription: blogSection(b, 'related_posts_description', 'relatedPostsDescription'),
+  relatedPostsCtaText: blogSection(b, 'related_posts_cta_text', 'relatedPostsCtaText'),
 }); 

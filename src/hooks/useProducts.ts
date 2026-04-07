@@ -45,7 +45,7 @@ export function useProduct(id: string | undefined) {
   const { data, loading, error } = useFetch<{ product: Product; related: Product[] }>(
     url,
     cacheKey,
-    10 * 60 * 1000 // 10 minutes cache
+    30 * 1000 // 30 seconds cache for detail page to avoid stale data during editing
   );
 
   return {

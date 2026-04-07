@@ -97,7 +97,8 @@ router.post('/logout', (req, res) => {
 
 router.post('/admin/login', loginLimit, async (req, res) => { 
   const { password } = req.body; 
-  if (!password || password !== process.env.ADMIN_PASSWORD) { 
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!password || !adminPassword || password.trim() !== adminPassword.trim()) { 
     return res.status(401).json({ success: false, error: 'Invalid credentials' }); 
   } 
   const token = jwt.sign( 

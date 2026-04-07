@@ -16,6 +16,7 @@ export const AdminShopCategories: React.FC = () => {
 
   const [isShopCategoryModalOpen, setIsShopCategoryModalOpen] = useState(false);
   const [editingShopCategory, setEditingShopCategory] = useState<any>(null);
+  const [subCategoriesInput, setSubCategoriesInput] = useState('');
   const [shopCategoryFormErrors, setShopCategoryFormErrors] = useState<Record<string, string>>({});
   const [confirmDeleteShopCategoryId, setConfirmDeleteShopCategoryId] = useState<string | null>(null);
 
@@ -39,10 +40,18 @@ export const AdminShopCategories: React.FC = () => {
       const url = isEdit ? `/api/home-shop/admin/shop-categories/${editingShopCategory.id}` : '/api/home-shop/admin/shop-categories';
       const method = isEdit ? 'PUT' : 'POST';
 
+      const payload = {
+        ...editingShopCategory,
+        sub_categories: subCategoriesInput
+          .split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+      };
+
       const res = await adminFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingShopCategory)
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
@@ -91,6 +100,7 @@ export const AdminShopCategories: React.FC = () => {
         <button 
           onClick={() => {
             setEditingShopCategory({ sub_categories: [] });
+            setSubCategoriesInput('');
             setShopCategoryFormErrors({});
             setIsShopCategoryModalOpen(true);
           }}
@@ -128,6 +138,7 @@ export const AdminShopCategories: React.FC = () => {
                       <button 
                         onClick={() => {
                           setEditingShopCategory({ ...category });
+                          setSubCategoriesInput(category.sub_categories?.join(', ') || '');
                           setShopCategoryFormErrors({});
                           setIsShopCategoryModalOpen(true);
                         }}
@@ -209,11 +220,8 @@ export const AdminShopCategories: React.FC = () => {
                     <label className="font-label text-xs uppercase tracking-widest font-bold text-outline">Sub-categories (comma separated)</label>
                     <input 
                       type="text" 
-                      value={editingShopCategory?.sub_categories?.join(', ') || ''} 
-                      onChange={(e) => setEditingShopCategory((prev: any) => ({ 
-                        ...prev, 
-                        sub_categories: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) 
-                      }))} 
+                      value={subCategoriesInput} 
+                      onChange={(e) => setSubCategoriesInput(e.target.value)} 
                       className="px-4 py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 w-full text-sm" 
                       placeholder="Clothing, Accessories, etc." 
                     />

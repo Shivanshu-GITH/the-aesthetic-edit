@@ -46,7 +46,7 @@ export function useBlogPost(slug: string | undefined) {
     post: BlogPost; 
     recommendedProducts: Product[]; 
     relatedPosts: BlogPost[] 
-  }>(url, cacheKey);
+  }>(url, cacheKey, 30 * 1000); // 30 seconds cache for detail page to avoid stale data during editing
 
   return {
     post: data?.post || null,

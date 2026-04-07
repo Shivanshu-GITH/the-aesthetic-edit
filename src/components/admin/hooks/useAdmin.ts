@@ -239,7 +239,7 @@ export function useAdmin() {
       const res = await fetch('/api/auth/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ password: password.trim() })
       });
       if (res.ok) {
         fetchDashboard();

@@ -23,7 +23,15 @@ const blogPostSchema = z.object({
   readTime: z.string(),
   recommendedProducts: z.array(z.string()).optional(),
   relatedPosts: z.array(z.string()).optional(),
-  isPublished: z.boolean().optional()
+  isPublished: z.boolean().optional(),
+  sectionHeading: z.string().max(255).optional().nullable(),
+  sectionSubheading: z.string().max(255).optional().nullable(),
+  sectionDescription: z.string().max(1000).optional().nullable(),
+  sectionCtaText: z.string().max(100).optional().nullable(),
+  relatedPostsHeading: z.string().max(255).optional().nullable(),
+  relatedPostsSubheading: z.string().max(255).optional().nullable(),
+  relatedPostsDescription: z.string().max(1000).optional().nullable(),
+  relatedPostsCtaText: z.string().max(100).optional().nullable()
 });
 
 const blogCategorySchema = z.object({
@@ -54,7 +62,13 @@ router.post('/admin/posts', checkAdmin, async (req, res) => {
   if (!validation.success) {
     return res.status(400).json({ success: false, error: validation.error.issues[0].message });
   }
-  const { slug, categorySlug, title, excerpt, content, image, images = [], category, author, authorImage, date, readTime, recommendedProducts = [], relatedPosts = [], isPublished = true } = validation.data; 
+  const { 
+    slug, categorySlug, title, excerpt, content, image, images = [], 
+    category, author, authorImage, date, readTime, 
+    recommendedProducts = [], relatedPosts = [], isPublished = true,
+    sectionHeading, sectionSubheading, sectionDescription, sectionCtaText,
+    relatedPostsHeading, relatedPostsSubheading, relatedPostsDescription, relatedPostsCtaText
+  } = validation.data; 
   try { 
     const id = uuidv4(); 
     const finalImages = Array.isArray(images) && images.length > 0 ? images : [image];
@@ -63,11 +77,21 @@ router.post('/admin/posts', checkAdmin, async (req, res) => {
     const relatedPostsJson = JSON.stringify(relatedPosts || []);
 
     await sql` 
-      INSERT INTO blog_posts (id, slug, category_slug, title, excerpt, content, image, images, category, author, author_image, date, read_time, recommended_products, related_posts, is_published) 
+      INSERT INTO blog_posts (
+        id, slug, category_slug, title, excerpt, content, image, images, 
+        category, author, author_image, date, read_time, 
+        recommended_products, related_posts, is_published,
+        section_heading, section_subheading, section_description, section_cta_text,
+        related_posts_heading, related_posts_subheading, related_posts_description, related_posts_cta_text
+      ) 
       VALUES (
         ${id}, ${slug}, ${categorySlug}, ${title}, ${excerpt}, ${content}, ${image}, 
         ${imagesJson}::jsonb, ${category}, ${author}, ${authorImage || null}, ${date}, ${readTime}, 
-        ${recommendedProductsJson}::jsonb, ${relatedPostsJson}::jsonb, ${isPublished ?? true}
+        ${recommendedProductsJson}::jsonb, ${relatedPostsJson}::jsonb, ${isPublished ?? true},
+        ${sectionHeading || null}, ${sectionSubheading || null}, 
+        ${sectionDescription || null}, ${sectionCtaText || null},
+        ${relatedPostsHeading || null}, ${relatedPostsSubheading || null}, 
+        ${relatedPostsDescription || null}, ${relatedPostsCtaText || null}
       ) 
     `; 
     const rows = await sql`SELECT * FROM blog_posts WHERE id = ${id}`; 
@@ -79,13 +103,40 @@ router.post('/admin/posts', checkAdmin, async (req, res) => {
   } 
 }); 
 
+const publishSchema = z.object({ isPublished: z.boolean() });
+
+router.patch('/admin/posts/:id/publish', checkAdmin, async (req, res) => {
+  const { id } = req.params;
+  const validation = publishSchema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json({ success: false, error: validation.error.issues[0].message });
+  }
+  const { isPublished } = validation.data;
+  try {
+    const existing = await sql`SELECT id FROM blog_posts WHERE id = ${id}`;
+    if (existing.length === 0) return res.status(404).json({ success: false, error: 'Post not found' });
+    await sql`UPDATE blog_posts SET is_published = ${isPublished} WHERE id = ${id}`;
+    const rows = await sql`SELECT * FROM blog_posts WHERE id = ${id}`;
+    res.json({ success: true, data: formatBlogPost(rows[0]) });
+  } catch (e: any) {
+    console.error('Error toggling blog publish:', e);
+    res.status(500).json({ success: false, error: 'Database error: ' + e.message });
+  }
+});
+
 router.put('/admin/posts/:id', checkAdmin, async (req, res) => { 
   const { id } = req.params; 
   const validation = blogPostSchema.safeParse(req.body);
   if (!validation.success) {
     return res.status(400).json({ success: false, error: validation.error.issues[0].message });
   }
-  const { slug, categorySlug, title, excerpt, content, image, images = [], category, author, authorImage, date, readTime, recommendedProducts = [], relatedPosts = [], isPublished } = validation.data; 
+  const { 
+    slug, categorySlug, title, excerpt, content, image, images = [], 
+    category, author, authorImage, date, readTime, 
+    recommendedProducts = [], relatedPosts = [], isPublished,
+    sectionHeading, sectionSubheading, sectionDescription, sectionCtaText,
+    relatedPostsHeading, relatedPostsSubheading, relatedPostsDescription, relatedPostsCtaText
+  } = validation.data; 
   try { 
     const existing = await sql`SELECT 1 FROM blog_posts WHERE id = ${id}`; 
     if (existing.length === 0) return res.status(404).json({ success: false, error: 'Post not found' }); 
@@ -95,11 +146,22 @@ router.put('/admin/posts/:id', checkAdmin, async (req, res) => {
     const relatedPostsJson = JSON.stringify(relatedPosts || []);
  
     await sql` 
-      UPDATE blog_posts SET slug = ${slug}, category_slug = ${categorySlug}, title = ${title}, excerpt = ${excerpt}, 
-      content = ${content}, image = ${image}, images = ${imagesJson}::jsonb, category = ${category}, author = ${author}, author_image = ${authorImage || null}, date = ${date}, 
-      read_time = ${readTime}, recommended_products = ${recommendedProductsJson}::jsonb, related_posts = ${relatedPostsJson}::jsonb, is_published = ${isPublished ?? true} 
+      UPDATE blog_posts SET 
+        slug = ${slug}, category_slug = ${categorySlug}, title = ${title}, excerpt = ${excerpt}, 
+        content = ${content}, image = ${image}, images = ${imagesJson}::jsonb, category = ${category}, 
+        author = ${author}, author_image = ${authorImage || null}, date = ${date}, 
+        read_time = ${readTime}, recommended_products = ${recommendedProductsJson}::jsonb, 
+        related_posts = ${relatedPostsJson}::jsonb, is_published = ${isPublished ?? true},
+        section_heading = ${sectionHeading || null}, section_subheading = ${sectionSubheading || null},
+        section_description = ${sectionDescription || null}, section_cta_text = ${sectionCtaText || null},
+        related_posts_heading = ${relatedPostsHeading || null}, related_posts_subheading = ${relatedPostsSubheading || null},
+        related_posts_description = ${relatedPostsDescription || null}, related_posts_cta_text = ${relatedPostsCtaText || null}
       WHERE id = ${id} 
     `; 
+
+    // Clear categories cache since a post update might affect category lists if we were caching them specifically
+    categoriesCache = null;
+
     const rows = await sql`SELECT * FROM blog_posts WHERE id = ${id}`; 
     res.json({ success: true, data: formatBlogPost(rows[0]) }); 
   } catch (e: any) { 

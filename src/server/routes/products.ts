@@ -23,7 +23,11 @@ const productSchema = z.object({
   isActive: z.boolean().optional(),
   isTrending: z.boolean().optional(),
   isTopRated: z.boolean().optional(),
-  relatedProducts: z.array(z.string()).optional()
+  relatedProducts: z.array(z.string()).optional(),
+  sectionHeading: z.string().max(255).optional().nullable(),
+  sectionSubheading: z.string().max(255).optional().nullable(),
+  sectionDescription: z.string().max(1000).optional().nullable(),
+  sectionCtaText: z.string().max(100).optional().nullable()
 });
 
 const patchProductSchema = z.object({ 
@@ -59,7 +63,8 @@ router.post('/admin/create', checkAdmin, async (req, res) => {
   const { 
     title, price, image, images = [], category, subCategory, vibes = [], 
     affiliateUrl, retailer, description, isActive = true, 
-    isTrending = false, isTopRated = false, relatedProducts = []
+    isTrending = false, isTopRated = false, relatedProducts = [],
+    sectionHeading, sectionSubheading, sectionDescription, sectionCtaText
   } = validation.data; 
 
   try { 
@@ -68,8 +73,20 @@ router.post('/admin/create', checkAdmin, async (req, res) => {
     const relatedProductsJson = JSON.stringify(relatedProducts || []);
     const id = uuidv4(); 
     await sql` 
-      INSERT INTO products (id, title, price, image, images, category, sub_category, vibes, affiliate_url, retailer, description, is_active, is_trending, is_top_rated, related_products) 
-      VALUES (${id}, ${title}, ${price}, ${image}, ${imagesJson}::jsonb, ${category}, ${subCategory}, ${vibesJson}::jsonb, ${affiliateUrl}, ${retailer || null}, ${description || null}, ${isActive}, ${isTrending}, ${isTopRated}, ${relatedProductsJson}::jsonb) 
+      INSERT INTO products (
+        id, title, price, image, images, category, sub_category, vibes, 
+        affiliate_url, retailer, description, is_active, is_trending, 
+        is_top_rated, related_products, section_heading, section_subheading, 
+        section_description, section_cta_text
+      ) 
+      VALUES (
+        ${id}, ${title}, ${price}, ${image}, ${imagesJson}::jsonb, ${category}, 
+        ${subCategory}, ${vibesJson}::jsonb, ${affiliateUrl}, ${retailer || null}, 
+        ${description || null}, ${isActive}, ${isTrending}, ${isTopRated}, 
+        ${relatedProductsJson}::jsonb, ${sectionHeading || null}, 
+        ${sectionSubheading || null}, ${sectionDescription || null}, 
+        ${sectionCtaText || null}
+      ) 
     `; 
     const rows = await sql`SELECT * FROM products WHERE id = ${id}`; 
     res.status(201).json({ success: true, data: formatProduct(rows[0]) }); 
@@ -85,7 +102,12 @@ router.put('/admin/:id', checkAdmin, async (req, res) => {
   if (!validation.success) {
     return res.status(400).json({ success: false, error: validation.error.issues[0].message });
   }
-  const { title, price, image, images = [], category, subCategory, vibes = [], affiliateUrl, retailer, description, isActive, isTrending, isTopRated, relatedProducts = [] } = validation.data; 
+  const { 
+    title, price, image, images = [], category, subCategory, vibes = [], 
+    affiliateUrl, retailer, description, isActive, isTrending, isTopRated, 
+    relatedProducts = [], sectionHeading, sectionSubheading, 
+    sectionDescription, sectionCtaText 
+  } = validation.data; 
   try { 
     const existing = await sql`SELECT 1 FROM products WHERE id = ${id}`; 
     if (existing.length === 0) { 
@@ -99,7 +121,9 @@ router.put('/admin/:id', checkAdmin, async (req, res) => {
       SET title = ${title}, price = ${price}, image = ${image}, images = ${imagesJson}::jsonb, category = ${category}, 
           sub_category = ${subCategory}, vibes = ${vibesJson}::jsonb, affiliate_url = ${affiliateUrl}, 
           retailer = ${retailer || null}, description = ${description || null}, is_active = ${isActive}, 
-          is_trending = ${isTrending}, is_top_rated = ${isTopRated}, related_products = ${relatedProductsJson}::jsonb 
+          is_trending = ${isTrending}, is_top_rated = ${isTopRated}, related_products = ${relatedProductsJson}::jsonb,
+          section_heading = ${sectionHeading || null}, section_subheading = ${sectionSubheading || null},
+          section_description = ${sectionDescription || null}, section_cta_text = ${sectionCtaText || null}
        WHERE id = ${id} 
     `; 
     const rows = await sql`SELECT * FROM products WHERE id = ${id}`; 
@@ -229,13 +253,20 @@ router.get('/:id', async (req, res) => {
     if (rows.length === 0) { 
       return res.status(404).json({ success: false, error: 'Product not found' }); 
     } 
-    const product = rows[0]; 
-    const related = await sql` 
-      SELECT * FROM products WHERE category = ${product.category} AND id != ${id} AND is_active = true LIMIT 4 
-    `; 
+    const product = formatProduct(rows[0]); 
+    let related = [];
+    if (product.relatedProducts && product.relatedProducts.length > 0) {
+      const relatedRows = await sql`SELECT * FROM products WHERE id = ANY(${product.relatedProducts}) AND is_active = true`;
+      related = relatedRows.map(formatProduct);
+    } else {
+      const relatedRows = await sql` 
+        SELECT * FROM products WHERE category = ${product.category} AND id != ${id} AND is_active = true LIMIT 4 
+      `; 
+      related = relatedRows.map(formatProduct);
+    }
     res.json({ 
       success: true, 
-      data: { product: formatProduct(product), related: related.map(formatProduct) } 
+      data: { product, related } 
     }); 
   } catch (error: any) { 
     console.error(error); 

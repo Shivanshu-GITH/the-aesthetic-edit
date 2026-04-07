@@ -6,11 +6,29 @@ interface ImageCarouselProps {
   images: string[];
   className?: string;
   aspectRatio?: string;
+  autoPlay?: boolean;
+  interval?: number;
 }
 
-export default function ImageCarousel({ images, className = '', aspectRatio = 'aspect-square' }: ImageCarouselProps) {
+export default function ImageCarousel({ 
+  images, 
+  className = '', 
+  aspectRatio = 'aspect-square',
+  autoPlay = false,
+  interval = 5000
+}: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
+
+  useEffect(() => {
+    if (!autoPlay || images.length <= 1) return;
+
+    const timer = setInterval(() => {
+      paginate(1);
+    }, interval);
+
+    return () => clearInterval(timer);
+  }, [autoPlay, images.length, interval, currentIndex]);
 
   const slideVariants = {
     enter: (direction: number) => ({

@@ -14,6 +14,10 @@ export interface Product {
   isTrending?: boolean;
   isTopRated?: boolean;
   relatedProducts?: string[]; // IDs of products for "Complete the Look"
+  sectionHeading?: string;
+  sectionSubheading?: string;
+  sectionDescription?: string;
+  sectionCtaText?: string;
 }
 
 export interface BlogPost {
@@ -33,6 +37,14 @@ export interface BlogPost {
   recommendedProducts: string[]; // IDs of products
   relatedPosts: string[];
   isPublished?: boolean;
+  sectionHeading?: string;
+  sectionSubheading?: string;
+  sectionDescription?: string;
+  sectionCtaText?: string;
+  relatedPostsHeading?: string;
+  relatedPostsSubheading?: string;
+  relatedPostsDescription?: string;
+  relatedPostsCtaText?: string;
 }
 
 export interface BlogCategory {

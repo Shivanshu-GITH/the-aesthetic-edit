@@ -18,7 +18,7 @@ export default function ProductDetail() {
   const [isShared, setIsShared] = useState(false);
   const [displayPrice, setDisplayPrice] = useState('');
   
-  const { product, related, loading, error } = useProduct(id);
+  const { product, related: autoRelated, loading, error } = useProduct(id);
 
   useEffect(() => { 
     if (product) {
@@ -28,25 +28,6 @@ export default function ProductDetail() {
       }); 
     }
   }, [product]); 
-
-  // Manual related products logic
-  const manualRelatedIds = product?.relatedProducts || [];
-  const [manualRelatedProducts, setManualRelatedProducts] = useState([]);
-
-  useEffect(() => {
-    if (manualRelatedIds.length > 0) {
-      const fetchManual = async () => {
-        try {
-          const promises = manualRelatedIds.map(id => fetch(`/api/products/${id}`).then(r => r.json()));
-          const results = await Promise.all(promises);
-          setManualRelatedProducts(results.filter(r => r.success).map(r => r.data));
-        } catch (e) {
-          console.error('Failed to fetch manual related products', e);
-        }
-      };
-      fetchManual();
-    }
-  }, [manualRelatedIds]);
 
   const handleAffiliateClick = async () => {
     if (!product) return;
@@ -106,7 +87,7 @@ export default function ProductDetail() {
     </div>
   );
 
-  const finalRelated = manualRelatedProducts.length > 0 ? manualRelatedProducts : (related || []);
+  const finalRelated = autoRelated || [];
   const relatedColumns = 4;
   const visibleRelated = showAllRelated 
     ? finalRelated 
@@ -152,6 +133,7 @@ export default function ProductDetail() {
               <ImageCarousel 
                 images={product.images && product.images.length > 0 ? product.images : [product.image]} 
                 aspectRatio="aspect-[4/5]"
+                autoPlay={true}
               />
               <div className="absolute top-6 right-6 flex flex-col gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <WishlistButton variant="detail" productId={product.id} />
@@ -265,17 +247,23 @@ export default function ProductDetail() {
           <div className="max-w-2xl mb-16 md:mb-20 space-y-6">
             <div className="flex items-center gap-3 text-primary">
               <Sparkles size={20} fill="currentColor" />
-              <span className="font-label text-xs uppercase tracking-[0.4em] font-bold">Curated Picks</span>
+              <span className="font-label text-xs uppercase tracking-[0.4em] font-bold">
+                {product.sectionSubheading || 'Curated Picks'}
+              </span>
             </div>
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
               <div className="space-y-4">
-                <h2 className="text-4xl md:text-6xl font-headline font-bold text-on-surface leading-tight">Complete the Look</h2>
+                <h2 className="text-4xl md:text-6xl font-headline font-bold text-on-surface leading-tight">
+                  {product.sectionHeading || 'Complete the Look'}
+                </h2>
                 <p className="text-base md:text-lg text-on-surface-variant font-serif italic">
-                  Hand-selected pieces that perfectly complement your current aesthetic. Curated for intentional styling.
+                  {product.sectionDescription || 'Hand-selected pieces that perfectly complement your current aesthetic. Curated for intentional styling.'}
                 </p>
               </div>
               <Link to="/shop" className="group flex items-center gap-3 text-primary font-label text-xs uppercase tracking-[0.2em] font-bold whitespace-nowrap">
-                <span className="border-b-2 border-primary/20 group-hover:border-primary transition-all pb-1">View All Collection</span>
+                <span className="border-b-2 border-primary/20 group-hover:border-primary transition-all pb-1">
+                  {product.sectionCtaText || 'View All Collection'}
+                </span>
                 <div className="w-8 h-8 rounded-full bg-accent-blush flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
                   <ArrowLeft size={14} className="rotate-180" />
                 </div>
