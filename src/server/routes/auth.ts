@@ -27,6 +27,8 @@ const loginSchema = z.object({
 
 const router = express.Router(); 
 
+const BCRYPT_HASH_PREFIX = /^\$2[aby]\$\d{2}\$/;
+
 function issueToken(res: Response, user: { id: string; name: string; email: string; provider: string }) { 
   const token = jwt.sign( 
     { id: user.id, name: user.name, email: user.email }, 
@@ -103,10 +105,25 @@ router.post('/logout', (req, res) => {
 
 router.post('/admin/login', loginLimit, async (req, res) => { 
   const { password } = req.body; 
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!password || !adminPassword || password.trim() !== adminPassword.trim()) { 
+  const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH?.trim();
+  const adminPasswordLegacy = process.env.ADMIN_PASSWORD?.trim();
+
+  if (!password || (!adminPasswordHash && !adminPasswordLegacy)) {
     return res.status(401).json({ success: false, error: 'Invalid credentials' }); 
-  } 
+  }
+
+  let isAdminValid = false;
+  if (adminPasswordHash && BCRYPT_HASH_PREFIX.test(adminPasswordHash)) {
+    isAdminValid = await bcrypt.compare(password, adminPasswordHash);
+  } else if (adminPasswordLegacy) {
+    // Backward compatibility: keep existing deployments working until hash is configured.
+    isAdminValid = password.trim() === adminPasswordLegacy;
+  }
+
+  if (!isAdminValid) {
+    return res.status(401).json({ success: false, error: 'Invalid credentials' });
+  }
+
   const token = jwt.sign( 
     { role: 'admin', id: 'admin' }, 
     process.env.JWT_SECRET!, 

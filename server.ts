@@ -32,12 +32,16 @@ const normalizeOrigin = (origin: string) => {
 
 async function startServer() { 
   // Validate required env vars at startup 
-  const required = ['DATABASE_URL', 'JWT_SECRET', 'ADMIN_PASSWORD']; 
+  const required = ['DATABASE_URL', 'JWT_SECRET']; 
   const missing = required.filter(k => !process.env[k]); 
   if (missing.length > 0) { 
     console.error(`Missing required environment variables: ${missing.join(', ')}`); 
     process.exit(1); 
   } 
+  if (!process.env.ADMIN_PASSWORD_HASH && !process.env.ADMIN_PASSWORD) {
+    console.error('Missing admin credential: set ADMIN_PASSWORD_HASH (recommended) or ADMIN_PASSWORD (legacy).');
+    process.exit(1);
+  }
   if (process.env.JWT_SECRET!.length < 32) { 
     console.error('JWT_SECRET must be at least 32 characters'); 
     process.exit(1); 
