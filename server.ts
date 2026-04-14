@@ -71,11 +71,26 @@ async function startServer() {
     contentSecurityPolicy: process.env.NODE_ENV === 'production' ? { 
       directives: { 
         defaultSrc: ["'self'"], 
-        scriptSrc: ["'self'", "'unsafe-inline'"], 
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://apis.google.com",
+          "https://accounts.google.com",
+          "https://www.gstatic.com",
+        ], 
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], 
         imgSrc: ["'self'", "data:", "blob:", "https://images.unsplash.com", "https://res.cloudinary.com", "https://*.amazonaws.com", "https://i.pravatar.cc", "https://lh3.googleusercontent.com"], 
-        connectSrc: ["'self'", "https://ipapi.co", "https://open.er-api.com"], 
+        connectSrc: [
+          "'self'",
+          "https://ipapi.co",
+          "https://open.er-api.com",
+          "https://identitytoolkit.googleapis.com",
+          "https://securetoken.googleapis.com",
+          "https://firebaseinstallations.googleapis.com",
+          "https://www.googleapis.com",
+        ], 
         fontSrc: ["'self'", "https://fonts.gstatic.com"], 
+        frameSrc: ["'self'", "https://accounts.google.com"],
         objectSrc: ["'none'"], 
         upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null, 
       } 
