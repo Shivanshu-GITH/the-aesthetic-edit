@@ -10,7 +10,8 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { user, loading, login, loginWithGoogle, error } = useAuth();
+  const [resetNotice, setResetNotice] = useState('');
+  const { user, loading, login, loginWithGoogle, forgotPassword, error } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -88,8 +89,30 @@ export default function Login() {
                   className="w-full pl-12 pr-6 py-4 rounded-2xl bg-surface-container/50 border border-outline-variant/30 focus:outline-none focus:border-primary transition-all font-body"
                 />
               </div>
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void (async () => {
+                      try {
+                        await forgotPassword(email);
+                        setResetNotice('Password reset email sent. Check your inbox.');
+                      } catch {
+                        setResetNotice('');
+                      }
+                    })();
+                  }}
+                  className="text-[10px] font-label uppercase tracking-widest text-primary hover:text-primary-hover transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
             </div>
           </div>
+
+          {resetNotice && (
+            <p className="text-xs text-green-700 font-label uppercase tracking-widest text-center">{resetNotice}</p>
+          )}
 
           {error && (
             <p className="text-xs text-red-500 font-label uppercase tracking-widest text-center">{error}</p>

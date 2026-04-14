@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -46,6 +47,10 @@ const mapFirebaseError = (error) => {
       return 'Password is too weak. Use at least 8 characters.';
     case 'auth/network-request-failed':
       return 'Network error. Please check your connection and try again.';
+    case 'auth/missing-email':
+      return 'Please enter your email address first.';
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please wait a bit and try again.';
     default:
       return error?.message || 'Authentication failed';
   }
@@ -93,6 +98,16 @@ export async function getFirebaseIdToken() {
     throw new Error('No authenticated Firebase user');
   }
   return currentUser.getIdToken(true);
+}
+
+export async function requestPasswordReset(email) {
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (error) {
+    const normalized = new Error(mapFirebaseError(error));
+    normalized.code = error?.code;
+    throw normalized;
+  }
 }
 
 export async function exchangeFirebaseSession(idToken) {

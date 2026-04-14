@@ -8,6 +8,7 @@ import {
   loginWithGooglePopup,
   logoutFirebase,
   onGoogleAuthStateChange,
+  requestPasswordReset,
   signupWithEmailPassword,
 } from '../services/auth';
 
@@ -16,6 +17,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
@@ -149,6 +151,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const forgotPassword = async (email: string) => {
+    setError(null);
+    if (!email || !email.includes('@')) {
+      throw new Error('Enter your email first, then click Forgot password.');
+    }
+    try {
+      await requestPasswordReset(email.trim());
+    } catch (err: any) {
+      setError(err?.message || 'Could not send reset email');
+      throw err;
+    }
+  };
+
   const logout = async () => {
     try {
       await logoutFirebase();
@@ -159,7 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, signup, logout, error }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, forgotPassword, signup, logout, error }}>
       {children}
     </AuthContext.Provider>
   );
