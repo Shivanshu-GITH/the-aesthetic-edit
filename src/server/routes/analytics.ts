@@ -2,6 +2,7 @@ import { Router } from 'express';
 import sql from '../db.js'; 
 import { adminLimit, checkAdmin } from '../middleware/admin.js'; 
 import { formatProduct } from '../utils/formatters.js';
+import { sendInternalError } from '../utils/http.js';
 
 const router = Router(); 
 router.use(adminLimit); 
@@ -58,7 +59,7 @@ router.get('/summary', checkAdmin, async (req, res) => {
     }); 
   } catch (e: any) { 
     console.error('Analytics summary error:', e); 
-    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
+    sendInternalError(res, 'Failed to fetch analytics summary');
   } 
 }); 
 

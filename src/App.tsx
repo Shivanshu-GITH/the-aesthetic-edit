@@ -6,6 +6,7 @@ import { WishlistProvider } from './context/WishlistContext';
 import { AuthProvider } from './context/AuthContext';
 import { ToastStack } from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const loadHome = () => import('./pages/Home');
 const loadAbout = () => import('./pages/About');
@@ -20,6 +21,7 @@ const loadNotFound = () => import('./pages/NotFound');
 const loadAdmin = () => import('./pages/Admin');
 const loadLogin = () => import('./pages/Login');
 const loadSignup = () => import('./pages/Signup');
+const loadProfile = () => import('./pages/Profile');
 
 const Home = lazy(loadHome);
 const About = lazy(loadAbout);
@@ -34,6 +36,7 @@ const NotFound = lazy(loadNotFound);
 const Admin = lazy(loadAdmin);
 const Login = lazy(loadLogin);
 const Signup = lazy(loadSignup);
+const Profile = lazy(loadProfile);
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -132,7 +135,8 @@ function AppContent() {
             <Route path="/shop" element={<Shop />} />
             <Route path="/shop/product/:id" element={<ProductDetail />} />
             <Route path="/free-guide" element={<FreeGuide />} />
-            <Route path="/wishlist" element={<Wishlist />} />
+            <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />

@@ -702,12 +702,12 @@ npm run start
 
 # Run full smoke test
 SMOKE_BASE_URL=http://localhost:3000 \
-ADMIN_PASSWORD=your_admin_password \
+SMOKE_ADMIN_PASSWORD=your_admin_password \
 node scripts/smoke-full.mjs
 
 # Run admin smoke test
 SMOKE_BASE_URL=http://localhost:3000 \
-ADMIN_PASSWORD=your_admin_password \
+SMOKE_ADMIN_PASSWORD=your_admin_password \
 node scripts/smoke-admin.mjs
 ```
 

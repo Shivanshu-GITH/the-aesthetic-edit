@@ -5,6 +5,7 @@ import { adminLimit, checkAdmin } from '../middleware/admin.js';
 import { z } from 'zod';
 import { rateLimit } from 'express-rate-limit';
 import { formatProduct } from '../utils/formatters.js';
+import { paginationQuerySchema, sendInternalError } from '../utils/http.js';
 
 const router = Router(); 
 router.use(adminLimit); 
@@ -50,7 +51,7 @@ router.get('/admin/all', checkAdmin, async (req, res) => {
     res.json({ success: true, data: products.map(formatProduct) }); 
   } catch (error: any) { 
     console.error('Fetch admin products error:', error); 
-    res.status(500).json({ success: false, error: 'Database error: ' + error.message }); 
+    sendInternalError(res, 'Failed to fetch products');
   } 
 }); 
 
@@ -92,7 +93,7 @@ router.post('/admin/create', checkAdmin, async (req, res) => {
     res.status(201).json({ success: true, data: formatProduct(rows[0]) }); 
   } catch (error: any) { 
     console.error('Create product error:', error); 
-    res.status(500).json({ success: false, error: 'Failed to create product: ' + error.message }); 
+    sendInternalError(res, 'Failed to create product');
   } 
 }); 
 
@@ -130,7 +131,7 @@ router.put('/admin/:id', checkAdmin, async (req, res) => {
     res.json({ success: true, data: formatProduct(rows[0]) }); 
   } catch (error: any) { 
     console.error('Update product error:', error); 
-    res.status(500).json({ success: false, error: 'Failed to update product: ' + error.message }); 
+    sendInternalError(res, 'Failed to update product');
   } 
 }); 
 
@@ -193,8 +194,13 @@ router.patch('/:id/toggle-active', checkAdmin, async (req, res) => {
 }); 
 
 router.get('/', async (req, res) => { 
-  const { category, subCategory, vibe, maxPrice, search, topRated, trending, page = '1', limit = '12' } = req.query; 
-  const offset = (Number(page) - 1) * Number(limit); 
+  const { category, subCategory, vibe, maxPrice, search, topRated, trending } = req.query;
+  const paginationValidation = paginationQuerySchema.safeParse(req.query);
+  if (!paginationValidation.success) {
+    return res.status(400).json({ success: false, error: paginationValidation.error.issues[0].message });
+  }
+  const { page, limit } = paginationValidation.data;
+  const offset = (page - 1) * limit;
 
   try { 
     const categoryFilter = category || null;
@@ -231,18 +237,18 @@ router.get('/', async (req, res) => {
       ORDER BY 
         CASE WHEN ${topRatedFilter} THEN (SELECT COUNT(*) FROM affiliate_clicks ac WHERE ac.product_id = p.id) ELSE 0 END DESC,
         p.created_at DESC 
-      LIMIT ${Number(limit)} OFFSET ${offset}
+      LIMIT ${limit} OFFSET ${offset}
     `; 
 
-    const totalPages = Math.ceil(total / Number(limit)); 
+    const totalPages = Math.ceil(total / limit); 
     res.json({ 
       success: true, 
       data: products.map(formatProduct), 
-      meta: { total, page: Number(page), limit: Number(limit), totalPages } 
+      meta: { total, page, limit, totalPages } 
     }); 
   } catch (error: any) { 
     console.error(error); 
-    res.status(500).json({ success: false, error: 'Database error' }); 
+    sendInternalError(res, 'Failed to fetch products');
   } 
 }); 
 
@@ -270,7 +276,7 @@ router.get('/:id', async (req, res) => {
     }); 
   } catch (error: any) { 
     console.error(error); 
-    res.status(500).json({ success: false, error: 'Database error' }); 
+    sendInternalError(res, 'Failed to fetch product');
   } 
 }); 
 
@@ -288,7 +294,7 @@ router.post('/:id/affiliate-click', affiliateClickLimit, async (req, res) => {
     res.json({ success: true, data: { affiliateUrl: rows[0].affiliate_url } }); 
   } catch (error: any) { 
     console.error(error); 
-    res.status(500).json({ success: false, error: 'Database error' }); 
+    sendInternalError(res, 'Failed to process affiliate click');
   } 
 }); 
 
@@ -306,7 +312,7 @@ router.post('/:id/pinterest-save', async (req, res) => {
     res.json({ success: true, data: { success: true } }); 
   } catch (error: any) { 
     console.error(error); 
-    res.status(500).json({ success: false, error: 'Database error' }); 
+    sendInternalError(res, 'Failed to save Pinterest action');
   } 
 }); 
 

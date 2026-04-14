@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { adminLimit, checkAdmin } from '../middleware/admin.js';
 import { z } from 'zod';
 import { formatProduct, formatBlogPost } from '../utils/formatters.js';
+import { paginationQuerySchema, sendInternalError } from '../utils/http.js';
 
 const router = Router(); 
 router.use(adminLimit); 
@@ -53,7 +54,7 @@ router.get('/admin/posts', checkAdmin, async (req, res) => {
     res.json({ success: true, data: posts.map(formatBlogPost) }); 
   } catch (e: any) { 
     console.error('Fetch admin posts error:', e);
-    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
+    sendInternalError(res, 'Failed to fetch posts');
   } 
 }); 
 
@@ -99,7 +100,7 @@ router.post('/admin/posts', checkAdmin, async (req, res) => {
   } catch (e: any) { 
     console.error('Error creating blog post:', e);
     if (e.code === '23505') return res.status(409).json({ success: false, error: 'Slug already exists' }); 
-    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
+    sendInternalError(res, 'Failed to create post');
   } 
 }); 
 
@@ -120,7 +121,7 @@ router.patch('/admin/posts/:id/publish', checkAdmin, async (req, res) => {
     res.json({ success: true, data: formatBlogPost(rows[0]) });
   } catch (e: any) {
     console.error('Error toggling blog publish:', e);
-    res.status(500).json({ success: false, error: 'Database error: ' + e.message });
+    sendInternalError(res, 'Failed to update publish state');
   }
 });
 
@@ -166,7 +167,7 @@ router.put('/admin/posts/:id', checkAdmin, async (req, res) => {
     res.json({ success: true, data: formatBlogPost(rows[0]) }); 
   } catch (e: any) { 
     console.error('Error updating blog post:', e);
-    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
+    sendInternalError(res, 'Failed to update post');
   } 
 }); 
 
@@ -238,8 +239,15 @@ router.get('/categories', async (req, res) => {
 }); 
 
 router.get('/posts', async (req, res) => { 
-  const { categorySlug, page = '1', limit = '9' } = req.query; 
-  const offset = (Number(page) - 1) * Number(limit); 
+  const { categorySlug } = req.query;
+  const paginationValidation = paginationQuerySchema.extend({
+    limit: z.coerce.number().int().min(1).max(50).default(9),
+  }).safeParse(req.query);
+  if (!paginationValidation.success) {
+    return res.status(400).json({ success: false, error: paginationValidation.error.issues[0].message });
+  }
+  const { page, limit } = paginationValidation.data;
+  const offset = (page - 1) * limit;
   try { 
     const categorySlugFilter = categorySlug || null; 
     const countRows = await sql`
@@ -254,10 +262,13 @@ router.get('/posts', async (req, res) => {
       WHERE is_published = true 
         AND (${categorySlugFilter}::text IS NULL OR category_slug = ${categorySlugFilter})
       ORDER BY created_at DESC 
-      LIMIT ${Number(limit)} OFFSET ${offset}
+      LIMIT ${limit} OFFSET ${offset}
     `; 
-    res.json({ success: true, data: posts.map(formatBlogPost), meta: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) } }); 
-  } catch (e: any) { res.status(500).json({ success: false, error: 'Database error' }); } 
+    res.json({ success: true, data: posts.map(formatBlogPost), meta: { total, page, limit, totalPages: Math.ceil(total / limit) } }); 
+  } catch (e: any) { 
+    console.error('Error fetching blog posts:', e);
+    sendInternalError(res, 'Failed to fetch posts');
+  } 
 }); 
 
 router.get('/posts/:slug', async (req, res) => { 

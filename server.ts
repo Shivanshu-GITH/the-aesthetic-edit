@@ -38,9 +38,19 @@ async function startServer() {
     console.error(`Missing required environment variables: ${missing.join(', ')}`); 
     process.exit(1); 
   } 
-  if (!process.env.ADMIN_PASSWORD_HASH && !process.env.ADMIN_PASSWORD) {
-    console.error('Missing admin credential: set ADMIN_PASSWORD_HASH (recommended) or ADMIN_PASSWORD (legacy).');
+  const hasAdminHash = Boolean(process.env.ADMIN_PASSWORD_HASH?.trim());
+  const hasLegacyAdminPassword = Boolean(process.env.ADMIN_PASSWORD?.trim());
+  const allowLegacyAdminPassword = process.env.ALLOW_LEGACY_ADMIN_PASSWORD === 'true';
+  if (!hasAdminHash && !hasLegacyAdminPassword) {
+    console.error('Missing admin credential: set ADMIN_PASSWORD_HASH.');
     process.exit(1);
+  }
+  if (process.env.NODE_ENV === 'production' && !hasAdminHash) {
+    if (!allowLegacyAdminPassword) {
+      console.error('ADMIN_PASSWORD_HASH is required in production. Set ALLOW_LEGACY_ADMIN_PASSWORD=true only for temporary migration.');
+      process.exit(1);
+    }
+    console.warn('Using legacy ADMIN_PASSWORD in production. Migrate to ADMIN_PASSWORD_HASH as soon as possible.');
   }
   if (process.env.JWT_SECRET!.length < 32) { 
     console.error('JWT_SECRET must be at least 32 characters'); 
@@ -57,6 +67,7 @@ async function startServer() {
  
   // 2. Middleware 
   app.use(helmet({ 
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     contentSecurityPolicy: process.env.NODE_ENV === 'production' ? { 
       directives: { 
         defaultSrc: ["'self'"], 
@@ -82,7 +93,10 @@ async function startServer() {
   app.use(cors({ 
     origin: (origin, callback) => {
       if (!origin) {
-        return callback(null, true);
+        if (process.env.NODE_ENV !== 'production' || process.env.ALLOW_REQUESTS_WITHOUT_ORIGIN === 'true') {
+          return callback(null, true);
+        }
+        return callback(new Error('CORS origin required'));
       }
       const normalized = normalizeOrigin(origin);
       if (allowedOrigins.has(normalized)) {

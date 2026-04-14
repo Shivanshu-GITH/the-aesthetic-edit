@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-const BASE = process.env.SMOKE_BASE_URL || 'http://localhost:3010';
+const BASE = process.env.SMOKE_BASE_URL || 'http://localhost:3000';
 const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || '';
 
 function assert(cond, msg) {

@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight, Loader2, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useToast } from '../context/ToastContext';
 import SEOMeta from '../components/SEOMeta';
+import GoogleLoginButton from '../components/GoogleLoginButton';
 
 export default function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signup, error } = useAuth();
-  const { showToast } = useToast();
+  const { user, loading, signup, loginWithGoogle, error } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = (location.state as any)?.from?.pathname || '/';
+
+  if (!loading && user) {
+    return <Navigate to={from === '/signup' ? '/profile' : from} replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,6 +118,25 @@ export default function Signup() {
           >
             {isLoading ? <Loader2 size={20} className="animate-spin" /> : 'Create Account'}
           </button>
+
+          <GoogleLoginButton
+            disabled={isLoading}
+            loading={isLoading}
+            label="Sign up with Google"
+            onClick={() => {
+              void (async () => {
+                setIsLoading(true);
+                try {
+                  await loginWithGoogle();
+                  navigate(from, { replace: true });
+                } catch {
+                  // Error handled by AuthContext
+                } finally {
+                  setIsLoading(false);
+                }
+              })();
+            }}
+          />
         </form>
 
         <div className="mt-10 text-center space-y-4">

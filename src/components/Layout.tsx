@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Heart, User, LogOut } from 'lucide-react';
+import { Menu, X, Heart, User, LogOut, ChevronDown, UserCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useWishlist } from '../context/WishlistContext';
@@ -9,11 +9,13 @@ import { safeRouterPath, safeUserLinkHref } from '../lib/safeUrl';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const location = useLocation();
   const { wishlistCount } = useWishlist();
   const { user, logout } = useAuth();
   const [siteConfigs, setSiteConfigs] = React.useState<Record<string, string>>({});
   const [loadingConfig, setLoadingConfig] = React.useState(true);
+  const profilePanelRef = React.useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     fetch('/api/home-shop/config')
@@ -24,6 +26,34 @@ export function Navbar() {
       .catch(() => {})
       .finally(() => setLoadingConfig(false));
   }, []);
+
+  useEffect(() => {
+    if (!isProfileOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!profilePanelRef.current?.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsProfileOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isProfileOpen]);
+
+  useEffect(() => {
+    setIsProfileOpen(false);
+  }, [location.pathname]);
 
   const navLinks = React.useMemo(() => {
     const fallback = [
@@ -105,23 +135,87 @@ export function Navbar() {
 
           <div className="hidden md:flex items-center gap-4">
             {user ? (
-              <div className="flex items-center gap-4 border-l border-outline-variant/30 pl-4 lg:pl-6">
-                <div className="flex flex-col items-end">
-                  <span className="text-[8px] lg:text-[10px] font-label uppercase tracking-widest text-outline font-bold">
-                    Hello,
+              <div ref={profilePanelRef} className="relative flex items-center gap-4 border-l border-outline-variant/30 pl-4 lg:pl-6">
+                <button
+                  type="button"
+                  onClick={() => setIsProfileOpen((open) => !open)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-surface-container/60 transition-colors"
+                  aria-expanded={isProfileOpen}
+                  aria-haspopup="menu"
+                >
+                  {user.photo ? (
+                    <img src={user.photo} alt={user.name} className="w-9 h-9 rounded-full object-cover border border-outline-variant/30" />
+                  ) : (
+                    <span className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-outline">
+                      <UserCircle2 size={18} />
+                    </span>
+                  )}
+                  <span className="flex flex-col items-end">
+                    <span className="text-[8px] lg:text-[10px] font-label uppercase tracking-widest text-outline font-bold">
+                      Hello,
+                    </span>
+                    <span className="text-[10px] lg:text-xs font-bold text-on-surface">
+                      {user.name.split(' ')[0]}
+                    </span>
                   </span>
-                  <span className="text-[10px] lg:text-xs font-bold text-on-surface">
-                    {user.name.split(' ')[0]}
-                  </span>
-                </div>
+                  <ChevronDown size={14} className={cn('text-outline transition-transform', isProfileOpen && 'rotate-180')} />
+                </button>
                 <button 
                   type="button"
-                  onClick={logout}
+                  onClick={() => {
+                    void logout();
+                    setIsProfileOpen(false);
+                  }}
                   className="min-h-11 min-w-11 inline-flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors touch-manipulation"
                   title="Logout"
                 >
                   <LogOut size={18} />
                 </button>
+
+                <AnimatePresence>
+                  {isProfileOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      transition={{ duration: 0.18, ease: 'easeOut' }}
+                      className="absolute right-0 top-full mt-3 w-72 rounded-[24px] border border-outline-variant/30 bg-white p-4 shadow-2xl"
+                    >
+                      <div className="flex items-center gap-3 pb-4 border-b border-outline-variant/20">
+                        {user.photo ? (
+                          <img src={user.photo} alt={user.name} className="w-12 h-12 rounded-full object-cover border border-outline-variant/30" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-outline">
+                            <UserCircle2 size={24} />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-bold text-on-surface truncate">{user.name}</p>
+                          <p className="text-sm text-on-surface-variant truncate">{user.email}</p>
+                        </div>
+                      </div>
+                      <div className="pt-4 flex flex-col gap-2">
+                        <Link
+                          to="/profile"
+                          onClick={() => setIsProfileOpen(false)}
+                          className="rounded-xl px-4 py-3 text-sm font-label uppercase tracking-widest text-on-surface hover:bg-surface-container/50 transition-colors"
+                        >
+                          View Profile
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void logout();
+                            setIsProfileOpen(false);
+                          }}
+                          className="rounded-xl px-4 py-3 text-left text-sm font-label uppercase tracking-widest text-on-surface hover:bg-surface-container/50 transition-colors"
+                        >
+                          Logout
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ) : (
               <Link 
@@ -195,16 +289,25 @@ export function Navbar() {
               Wishlist ({wishlistCount})
             </Link>
             {user ? (
-              <button 
-                type="button"
-                onClick={() => {
-                  logout();
-                  setIsOpen(false);
-                }}
-                className="font-label text-base sm:text-lg tracking-widest uppercase text-left text-on-surface py-2 touch-manipulation"
-              >
-                Logout ({user.name})
-              </button>
+              <>
+                <Link
+                  to="/profile"
+                  onClick={() => setIsOpen(false)}
+                  className="font-label text-base sm:text-lg tracking-widest uppercase text-on-surface py-2 touch-manipulation"
+                >
+                  Profile ({user.name})
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void logout();
+                    setIsOpen(false);
+                  }}
+                  className="font-label text-base sm:text-lg tracking-widest uppercase text-left text-on-surface py-2 touch-manipulation"
+                >
+                  Logout
+                </button>
+              </>
             ) : (
               <Link 
                 to="/login" 

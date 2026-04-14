@@ -4,6 +4,7 @@ import sql from '../db.js';
 import { rateLimit } from 'express-rate-limit'; 
 import { v4 as uuidv4 } from 'uuid'; 
 import { checkAdmin } from '../middleware/admin.js';
+import { sendInternalError } from '../utils/http.js';
  
 const router = Router(); 
  
@@ -69,7 +70,7 @@ router.get('/admin/all', checkAdmin, async (req, res) => {
     res.json({ success: true, data: leads }); 
   } catch (error: any) { 
     console.error('Fetch leads error:', error);
-    res.status(500).json({ success: false, error: 'Database error: ' + error.message }); 
+    sendInternalError(res, 'Failed to fetch leads');
   } 
 }); 
 
@@ -89,7 +90,7 @@ router.patch('/admin/:id/status', checkAdmin, async (req, res) => {
     res.json({ success: true, data: result[0] });
   } catch (error: any) {
     console.error('Update lead status error:', error);
-    res.status(500).json({ success: false, error: error.message || 'Database error' });
+    sendInternalError(res, 'Failed to update lead');
   }
 });
 
@@ -103,7 +104,7 @@ router.delete('/admin/:id', checkAdmin, async (req, res) => {
     res.json({ success: true, data: { message: 'Lead deleted successfully' } });
   } catch (error: any) {
     console.error('Delete lead error:', error);
-    res.status(500).json({ success: false, error: error.message || 'Database error' });
+    sendInternalError(res, 'Failed to delete lead');
   }
 });
  

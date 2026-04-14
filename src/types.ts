@@ -86,8 +86,10 @@ export interface PaginationMeta {
 
 export interface User {
   id: string;
+  uid?: string;
   name: string;
   email: string;
+  photo?: string;
   provider?: 'google' | 'local';
 }
 

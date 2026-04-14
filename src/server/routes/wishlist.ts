@@ -2,6 +2,7 @@ import { Router } from 'express';
 import sql from '../db.js'; 
 import { v4 as uuidv4 } from 'uuid'; 
 import { requireAuth, optionalAuth, AuthenticatedRequest } from '../middleware/auth.js'; 
+import { sendInternalError } from '../utils/http.js';
 
 const router = Router(); 
 
@@ -16,7 +17,7 @@ router.post('/journal', requireAuth, async (req: AuthenticatedRequest, res) => {
     res.json({ success: true, data: { added: true } }); 
   } catch (error: any) { 
     console.error('Wishlist journal error:', error); 
-    res.status(500).json({ success: false, error: error.message }); 
+    sendInternalError(res, 'Failed to save wishlist journal');
   } 
 }); 
 
@@ -27,7 +28,8 @@ router.delete('/journal/:postId', requireAuth, async (req: AuthenticatedRequest,
     await sql`DELETE FROM wishlist_journals WHERE user_id = ${userId} AND post_id = ${postId}`; 
     res.json({ success: true, data: { removed: true } }); 
   } catch (error: any) { 
-    res.status(500).json({ success: false, error: error.message }); 
+    console.error('Wishlist journal delete error:', error);
+    sendInternalError(res, 'Failed to remove wishlist journal');
   } 
 }); 
 
@@ -42,7 +44,7 @@ router.get('/', optionalAuth, async (req: AuthenticatedRequest, res) => {
     res.json({ success: true, data: { products, journals } }); 
   } catch (error: any) { 
     console.error('Wishlist fetch error:', error); 
-    res.status(500).json({ success: false, error: error.message }); 
+    sendInternalError(res, 'Failed to fetch wishlist');
   } 
 }); 
 
@@ -56,7 +58,8 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
     await sql`INSERT INTO wishlist_items (id, user_id, product_id) VALUES (${uuidv4()}, ${userId}, ${productId}) ON CONFLICT DO NOTHING`; 
     res.json({ success: true, data: { added: true } }); 
   } catch (error: any) { 
-    res.status(500).json({ success: false, error: error.message }); 
+    console.error('Wishlist add error:', error);
+    sendInternalError(res, 'Failed to add wishlist item');
   } 
 }); 
 
@@ -67,7 +70,8 @@ router.delete('/:productId', requireAuth, async (req: AuthenticatedRequest, res)
     await sql`DELETE FROM wishlist_items WHERE user_id = ${userId} AND product_id = ${productId}`; 
     res.json({ success: true, data: { removed: true } }); 
   } catch (error: any) { 
-    res.status(500).json({ success: false, error: error.message }); 
+    console.error('Wishlist remove error:', error);
+    sendInternalError(res, 'Failed to remove wishlist item');
   } 
 }); 
 

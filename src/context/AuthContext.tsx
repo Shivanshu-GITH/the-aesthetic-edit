@@ -1,12 +1,23 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, ApiResponse } from '../types';
+import { User } from '../types';
+import {
+  exchangeFirebaseSession,
+  getFirebaseIdToken,
+  getStoredAuthUser,
+  loginWithEmailPassword,
+  loginWithGooglePopup,
+  logoutFirebase,
+  onGoogleAuthStateChange,
+  signupWithEmailPassword,
+} from '../services/auth';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   error: string | null;
 }
 
@@ -18,44 +29,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Skip fetching standard auth if we are on admin pages or if password auth is used
+    let isMounted = true;
+    const storedGoogleUser = getStoredAuthUser();
+    if (storedGoogleUser && isMounted) {
+      setUser(storedGoogleUser as User);
+    }
+
+    const unsubscribe = onGoogleAuthStateChange((firebaseUser: User | null) => {
+      if (!isMounted) return;
+      if (!firebaseUser) return;
+      void (async () => {
+        try {
+          const idToken = await getFirebaseIdToken();
+          const sessionUser = await exchangeFirebaseSession(idToken);
+          if (isMounted) {
+            setUser(sessionUser as User);
+          }
+        } catch (error) {
+          // Do not override existing logged-in state with transient exchange failures.
+          console.error('Firebase session sync failed:', error);
+        }
+      })();
+    });
+
+    // Skip backend auth checks on admin pages
     if (window.location.pathname.startsWith('/admin')) {
       setLoading(false);
-      return;
+      return () => {
+        unsubscribe();
+      };
     }
 
     const checkUser = async () => { 
       try { 
-        const res = await fetch('/api/auth/me'); 
+        const res = await fetch('/api/auth/me', { credentials: 'include' }); 
+        if (res.status === 401) {
+          return;
+        }
         const data = await res.json(); 
-        if (data.success && data.data?.user) { 
+        if (isMounted && data.success && data.data?.user) { 
           setUser(data.data.user); 
         } 
       } catch { 
         // not logged in 
       } finally { 
-        setLoading(false); 
+        if (isMounted) {
+          setLoading(false);
+        }
       } 
     }; 
-    checkUser();
+    void checkUser();
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
+
+  const establishServerSession = async () => {
+    const idToken = await getFirebaseIdToken();
+    try {
+      return await exchangeFirebaseSession(idToken);
+    } catch {
+      // One retry can recover from transient backend restarts/proxy hiccups.
+      return exchangeFirebaseSession(idToken);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     setError(null);
     if (!email || !email.includes('@')) throw new Error('Please enter a valid email address.'); 
     if (!password || password.length < 8) throw new Error('Password must be at least 8 characters.'); 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const res: ApiResponse<{ user: User }> = await response.json();
-      if (res.success && res.data) {
-        setUser(res.data.user);
-      } else {
-        throw new Error(res.error || 'Login failed');
-      }
+      await loginWithEmailPassword(email, password);
+      const sessionUser = await establishServerSession();
+      setUser(sessionUser as User);
     } catch (err: any) {
       setError(err.message);
       throw err;
@@ -68,31 +116,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!email || !email.includes('@')) throw new Error('Please enter a valid email address.'); 
     if (!password || password.length < 8) throw new Error('Password must be at least 8 characters.'); 
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      });
-      const res: ApiResponse<{ user: User }> = await response.json();
-      if (res.success && res.data) {
-        setUser(res.data.user);
-      } else {
-        throw new Error(res.error || 'Signup failed');
-      }
+      await signupWithEmailPassword(name, email, password);
+      const sessionUser = await establishServerSession();
+      setUser(sessionUser as User);
     } catch (err: any) {
+      // If the account was created but session exchange failed, recover by logging in and exchanging again.
+      if (err?.code === 'auth/email-already-in-use') {
+        try {
+          await loginWithEmailPassword(email, password);
+          const sessionUser = await establishServerSession();
+          setUser(sessionUser as User);
+          return;
+        } catch {
+          // Fall back to original error below.
+        }
+      }
       console.error('Signup fetch error:', err);
       setError(err.message);
       throw err;
     }
   };
 
-  const logout = async () => { 
-    await fetch('/api/auth/logout', { method: 'POST' }); 
-    setUser(null); 
+  const loginWithGoogle = async () => {
+    setError(null);
+    try {
+      await loginWithGooglePopup();
+      const sessionUser = await establishServerSession();
+      setUser(sessionUser as User);
+    } catch (err: any) {
+      setError(err?.message || 'Google login failed');
+      throw err;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await logoutFirebase();
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    } finally {
+      setUser(null);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, error }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, signup, logout, error }}>
       {children}
     </AuthContext.Provider>
   );

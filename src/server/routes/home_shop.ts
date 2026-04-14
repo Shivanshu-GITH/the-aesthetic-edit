@@ -3,6 +3,7 @@ import sql from '../db.js';
 import { v4 as uuidv4 } from 'uuid'; 
 import { adminLimit, checkAdmin } from '../middleware/admin.js'; 
 import { z } from 'zod';
+import { sendInternalError } from '../utils/http.js';
 
 const router = Router(); 
 router.use(adminLimit); 
@@ -37,7 +38,7 @@ router.get('/admin/shop-categories', checkAdmin, async (req, res) => {
     res.json({ success: true, data: categories }); 
   } catch (e: any) { 
     console.error('Fetch shop categories error:', e);
-    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
+    sendInternalError(res, 'Failed to fetch shop categories');
   } 
 }); 
 
@@ -103,7 +104,7 @@ router.get('/admin/moods', checkAdmin, async (req, res) => {
     res.json({ success: true, data: moods }); 
   } catch (e: any) { 
     console.error('Fetch moods error:', e);
-    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
+    sendInternalError(res, 'Failed to fetch moods');
   } 
 }); 
 
@@ -170,7 +171,7 @@ router.get('/admin/find-here', checkAdmin, async (req, res) => {
     res.json({ success: true, data: items }); 
   } catch (e: any) { 
     console.error('Fetch find-here items error:', e);
-    res.status(500).json({ success: false, error: 'Database error: ' + e.message }); 
+    sendInternalError(res, 'Failed to fetch find-here items');
   } 
 }); 
 
@@ -234,7 +235,7 @@ router.get('/config', async (req, res) => {
     res.json({ success: true, data: configMap });
   } catch (e: any) {
     console.error('Fetch site config error:', e);
-    res.status(500).json({ success: false, error: 'Database error: ' + e.message });
+    sendInternalError(res, 'Failed to fetch site config');
   }
 });
 
