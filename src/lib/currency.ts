@@ -60,7 +60,7 @@ async function detectCurrencyFromIP(): Promise<SupportedCurrency> {
     // Map country to currency if currency field not in supported list 
     return mapCountryToCurrency(data.country_code); 
   } catch { 
-    return detectCurrencyFromBrowser(); 
+    return 'INR';
   } 
 } 
  
