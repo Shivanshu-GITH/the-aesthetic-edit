@@ -90,13 +90,11 @@ async function startServer() {
       .map(normalizeOrigin)
   );
  
-  app.use(cors({ 
+  const corsOptions: cors.CorsOptions = {
     origin: (origin, callback) => {
       if (!origin) {
-        if (process.env.NODE_ENV !== 'production' || process.env.ALLOW_REQUESTS_WITHOUT_ORIGIN === 'true') {
-          return callback(null, true);
-        }
-        return callback(new Error('CORS origin required'));
+        // Allow requests with no Origin header (same-origin navigations, health checks, and server-side calls).
+        return callback(null, true);
       }
       const normalized = normalizeOrigin(origin);
       if (allowedOrigins.has(normalized)) {
@@ -104,8 +102,11 @@ async function startServer() {
       }
       return callback(new Error('CORS origin not allowed'));
     },
-    credentials: true, 
-  })); 
+    credentials: true,
+  };
+
+  // Apply CORS to API routes only. Static assets and SPA documents do not need CORS checks.
+  app.use('/api', cors(corsOptions)); 
   // Admin payloads (blog markdown, product arrays) can exceed 10kb.
   app.use(express.json({ limit: '2mb' })); 
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
