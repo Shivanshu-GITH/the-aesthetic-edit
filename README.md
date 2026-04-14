@@ -5,6 +5,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Express](https://img.shields.io/badge/Express-4.21-000000?logo=express&logoColor=white)](https://expressjs.com/)
+[![Firebase](https://img.shields.io/badge/Firebase-12-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
 [![Neon](https://img.shields.io/badge/Neon-Postgres-00E5A0?logo=postgresql&logoColor=white)](https://neon.tech/)
 [![Vite](https://img.shields.io/badge/Vite-6.2-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.1-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
@@ -18,9 +19,10 @@
 - [Feature Set](#feature-set)
 - [Technology Stack](#technology-stack)
 - [Project Structure](#project-structure)
+- [Authentication System](#authentication-system)
 - [Database Schema](#database-schema)
 - [API Reference](#api-reference)
-- [Authentication & Security](#authentication--security)
+- [Security](#security)
 - [Admin Panel](#admin-panel)
 - [Currency & Geo-Detection](#currency--geo-detection)
 - [Image Management](#image-management)
@@ -30,6 +32,7 @@
 - [Environment Variables](#environment-variables)
 - [Scripts](#scripts)
 - [Deployment](#deployment)
+- [Deployment Lockdown Checklist](#deployment-lockdown-checklist)
 - [Performance Optimizations](#performance-optimizations)
 - [Contributing](#contributing)
 
@@ -54,7 +57,8 @@ The platform is a **monorepo**: a single Express.js server handles both the REST
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        Client Browser                        │
-│        React 19 SPA  ·  React Router v7  ·  Tailwind v4     │
+│   React 19 SPA  ·  React Router v7  ·  Tailwind v4          │
+│   Firebase SDK (auth)  ·  Google Sign-In popup               │
 └─────────────────────────┬───────────────────────────────────┘
                           │ HTTP / Cookie Auth
 ┌─────────────────────────▼───────────────────────────────────┐
@@ -87,12 +91,16 @@ The platform is a **monorepo**: a single Express.js server handles both the REST
 | Decision | Rationale |
 |---|---|
 | **Monorepo / single server** | One deploy target, shared env vars, no CORS complexity in production |
+| **Firebase Auth + server JWT session** | Firebase handles Google OAuth, email/password, and password reset client-side; the server issues its own HttpOnly JWT cookie via `/api/auth/firebase/exchange` after verifying the Firebase ID token — best of both worlds |
 | **Neon serverless Postgres** | Instant spin-up, HTTP + WebSocket drivers, auto-suspend on free tier |
-| **JWT in HttpOnly cookies** | CSRF-resistant, no localStorage exposure; separate tokens for user vs admin |
+| **Bcrypt-hashed admin password** | `ADMIN_PASSWORD_HASH` (bcrypt, cost 12) replaces the old plaintext env var; legacy plain-text fallback retained via `ALLOW_LEGACY_ADMIN_PASSWORD` toggle for zero-downtime migration |
+| **JWT in HttpOnly cookies** | CSRF-resistant, no localStorage exposure; separate tokens for user (`ae_token`) vs admin (`ae_admin_token`) |
 | **Vite in middleware mode** | True HMR without a separate port; zero-config proxy |
-| **Code splitting via lazy()** | All 13 page routes lazy-loaded; vendor chunks split by domain (react, motion/lucide) |
+| **Code splitting via lazy()** | All 14 page routes lazy-loaded; vendor chunks split by domain (react, motion/lucide) |
 | **Zod validation on every route** | Schema-first request validation with typed errors; prevents invalid DB writes |
 | **In-process migrations** | `initDb()` runs `ALTER TABLE … ADD COLUMN IF NOT EXISTS` on startup — safe to run repeatedly in production without a migration runner |
+| **Magic-byte file validation** | Upload endpoint checks actual file signatures (JPEG `FF D8`, PNG `89 50 4E 47`, WebP `RIFF…WEBP`, GIF `GIF`) in addition to MIME type — prevents polyglot file attacks |
+| **IPv4-first DNS for Neon** | `dns.setDefaultResultOrder('ipv4first')` prevents `ENOTFOUND` errors on networks where IPv6 DNS resolves but routing to Neon endpoints fails |
 
 ---
 
@@ -103,23 +111,25 @@ The platform is a **monorepo**: a single Express.js server handles both the REST
 | Feature | Detail |
 |---|---|
 | **Home page** | CMS-driven hero, mood category grid, "Find It Here" editorial grid — all content editable from admin |
-| **Shop** | Filterable product catalogue by category, sub-category, and "vibe" tags; multi-image carousel on product detail |
+| **Shop** | Filterable product catalogue by category, sub-category, and "vibe" tags; paginated API (max 50/page); multi-image carousel on product detail |
 | **Product detail** | Affiliate link tracking, Pinterest Save button, "Complete the Look" related products, Cloudinary-optimized imagery |
-| **Wishlist** | Authenticated users can save products and blog posts; persisted to Postgres |
+| **Wishlist** | Authenticated users can save products and blog posts; persisted to Postgres; optimistic UI updates |
 | **Blog hub** | Category-based editorial hub with featured articles and curated collections |
-| **Blog post** | Full markdown-rich content, in-post product recommendations, related posts, custom CTA sections |
-| **Free Guide** | Lead magnet page with email capture form (double opt-in); configurable guide PDF URL |
+| **Blog post** | Full markdown-rich content, in-post product recommendations, related posts, two customisable CTA sections |
+| **Free Guide** | Lead magnet page with email capture form (double opt-in); configurable guide PDF URL via Admin > Site Config |
 | **About** | Fully CMS-editable personal brand page |
 | **Currency localisation** | IP-detected currency with live exchange rates (10 currencies supported, 6-hour cache) |
-| **Pinterest integration** | First-class Pinterest Save button with click tracking |
+| **Pinterest integration** | First-class Pinterest Save button with server-side click tracking |
+| **User profile** | Authenticated profile page showing name, email, provider, and avatar (Google photo or initials fallback); `/profile` route |
+| **Password reset** | Firebase-powered forgot-password email flow directly from the login page |
 
 ### Admin Panel (`/admin`)
 
 | Module | Capability |
 |---|---|
 | **Analytics** | Total leads, affiliate clicks, Pinterest saves; top-performing products by clicks and saves; recent leads list |
-| **Products** | Full CRUD; multi-image upload to Cloudinary; vibe tags; related products linking; trending/top-rated flags; per-product CTA customisation |
-| **Blog** | Rich post editor with markdown content, multiple images, recommended product linking, related post linking, custom section headings |
+| **Products** | Full CRUD; multi-image upload to Cloudinary with magic-byte signature validation; vibe tags; related products linking; trending/top-rated flags; per-product CTA customisation |
+| **Blog** | Rich post editor with markdown content, multiple images, recommended product linking, related post linking, two independent custom CTA sections |
 | **Blog Categories** | Manage category slugs, images, descriptions |
 | **Shop Categories** | Hierarchical categories with sub-categories and icon support |
 | **Home Config** | Edit mood categories, "Find It Here" categories, homepage text blocks |
@@ -137,6 +147,7 @@ The platform is a **monorepo**: a single Express.js server handles both the REST
 | `react` | 19 | UI library |
 | `react-dom` | 19 | DOM rendering |
 | `react-router-dom` | 7 | Client-side routing (SPA) |
+| `firebase` | 12 | Auth SDK — Google Sign-In popup, email/password, password reset, `onAuthStateChanged` |
 | `motion` | 12 | Animation library (Framer Motion v12) |
 | `lucide-react` | 0.546 | Icon system |
 | `tailwindcss` | 4.1 | Utility-first CSS (via Vite plugin) |
@@ -148,13 +159,13 @@ The platform is a **monorepo**: a single Express.js server handles both the REST
 |---|---|---|
 | `express` | 4.21 | HTTP server and routing |
 | `@neondatabase/serverless` | 0.10 | Neon Postgres client (HTTP + WebSocket) |
-| `bcrypt` | 6 | Password hashing (cost factor 12) |
+| `bcrypt` | 6 | Password hashing (cost factor 12) — users and admin |
 | `jsonwebtoken` | 9 | JWT issuance and verification |
 | `zod` | 4 | Runtime request schema validation |
-| `helmet` | 8 | Security headers + CSP |
-| `cors` | 2.8 | Origin allowlist |
+| `helmet` | 8 | Security headers + CSP (includes Firebase/Google domains) |
+| `cors` | 2.8 | Origin allowlist with normalisation |
 | `express-rate-limit` | 8.3 | Per-route rate limiting |
-| `multer` | 2.1 | Multipart file handling |
+| `multer` | 2.1 | Multipart file handling (in-memory storage) |
 | `cloudinary` | 2.9 | Image CDN upload and storage |
 | `nodemailer` | 8 | SMTP email delivery |
 | `morgan` | 1.10 | HTTP request logging (dev only) |
@@ -179,52 +190,57 @@ The platform is a **monorepo**: a single Express.js server handles both the REST
 
 ```
 the-aesthetic-edit/
-├── server.ts                  # Express entry point — bootstraps all middleware and routes
-├── index.html                 # Vite HTML shell
-├── vite.config.ts             # Vite config: code splitting, aliases, HMR control
-├── tsconfig.json              # Shared TS config (ES2022, bundler moduleResolution)
+├── server.ts                   # Express entry point — middleware, routes, Vite integration
+├── index.html                  # Vite HTML shell
+├── vite.config.ts              # Code splitting, aliases, HMR control
+├── tsconfig.json               # Shared TS config (ES2022, bundler moduleResolution)
 ├── package.json
-├── .env.example               # All required environment variables documented
-├── metadata.json              # App metadata (name, description)
+├── .env.example                # All required environment variables documented
+├── metadata.json               # App metadata (name, description)
+├── DEPLOYMENT_LOCKDOWN.md      # Pre-launch production checklist
 │
 ├── scripts/
-│   ├── smoke-full.mjs         # End-to-end smoke test: auth, products, blog, wishlist, upload
-│   └── smoke-admin.mjs        # Admin-only smoke test: CRUD for all admin entities
+│   ├── smoke-full.mjs          # Full E2E smoke test: auth, products, blog, wishlist, upload
+│   └── smoke-admin.mjs         # Admin smoke test: CRUD for all admin CMS entities
 │
 └── src/
-    ├── main.tsx               # React entry point
-    ├── App.tsx                # Root component: providers, router, lazy routes, prefetching
-    ├── index.css              # Global styles and Tailwind directives
-    ├── types.ts               # Shared TypeScript interfaces (Product, BlogPost, User, etc.)
+    ├── main.tsx                # React entry point
+    ├── App.tsx                 # Root: providers, router, 14 lazy routes, favicon injection, prefetch
+    ├── index.css               # Global styles and Tailwind directives
+    ├── types.ts                # Shared TypeScript interfaces (Product, BlogPost, User, etc.)
+    ├── firebase.js             # Firebase app init, GoogleAuthProvider, browserLocalPersistence
     ├── vite-env.d.ts
     │
-    ├── pages/                 # Route-level components (all lazy-loaded)
+    ├── pages/                  # Route-level components (all lazy-loaded)
     │   ├── Home.tsx
     │   ├── Shop.tsx
     │   ├── ProductDetail.tsx
     │   ├── BlogHub.tsx
     │   ├── BlogCategory.tsx
     │   ├── BlogPost.tsx
-    │   ├── Wishlist.tsx
+    │   ├── Wishlist.tsx        # Protected route
+    │   ├── Profile.tsx         # Protected route — avatar, name, email, provider, UID, logout
     │   ├── FreeGuide.tsx
     │   ├── About.tsx
     │   ├── Admin.tsx
-    │   ├── Login.tsx
-    │   ├── Signup.tsx
+    │   ├── Login.tsx           # Email/password + Google login + forgot password
+    │   ├── Signup.tsx          # Email/password + Google signup
     │   └── NotFound.tsx
     │
     ├── components/
-    │   ├── Layout.tsx          # Navbar + Footer (CMS-driven navigation)
-    │   ├── ErrorBoundary.tsx   # React error boundary
-    │   ├── SEOMeta.tsx         # Dynamic <head> meta tags per route
-    │   ├── ImageCarousel.tsx   # Multi-image carousel with thumbnails
-    │   ├── ImageUpload.tsx     # Single image upload (Cloudinary)
-    │   ├── MultiImageUpload.tsx# Multi-image upload widget
-    │   ├── ProductCard.tsx     # Reusable product tile
-    │   ├── WishlistButton.tsx  # Heart toggle (auth-aware)
+    │   ├── Layout.tsx           # Navbar + Footer (CMS-driven navigation)
+    │   ├── ErrorBoundary.tsx    # React error boundary
+    │   ├── SEOMeta.tsx          # Dynamic <head> meta tags per route
+    │   ├── ImageCarousel.tsx    # Multi-image carousel with thumbnails
+    │   ├── ImageUpload.tsx      # Single image upload (Cloudinary)
+    │   ├── MultiImageUpload.tsx # Multi-image upload widget
+    │   ├── ProductCard.tsx      # Reusable product tile
+    │   ├── WishlistButton.tsx   # Heart toggle (auth-aware)
     │   ├── PinterestSaveButton.tsx
-    │   ├── Skeleton.tsx        # Loading skeleton components
-    │   ├── Toast.tsx           # Toast notification UI
+    │   ├── GoogleLoginButton.tsx # Styled Google Sign-in button with SVG logo
+    │   ├── ProtectedRoute.tsx   # Auth guard — redirects to /login with location state
+    │   ├── Skeleton.tsx         # Loading skeleton components
+    │   ├── Toast.tsx            # Toast notification UI
     │   └── admin/
     │       ├── AdminLayout.tsx
     │       ├── AdminContext.tsx
@@ -237,45 +253,123 @@ the-aesthetic-edit/
     │       ├── AdminSiteConfig.tsx
     │       ├── AdminLeads.tsx
     │       └── hooks/
-    │           └── useAdmin.ts # Admin data fetching and mutations
+    │           └── useAdmin.ts  # Admin data fetching and mutations
     │
     ├── context/
-    │   ├── AuthContext.tsx     # User auth state, login/logout actions
-    │   ├── WishlistContext.tsx # Wishlist state with optimistic updates
-    │   └── ToastContext.tsx    # Global toast notification queue
+    │   ├── AuthContext.tsx      # Firebase auth state + server session sync + Google + password reset
+    │   ├── WishlistContext.tsx  # Wishlist state with optimistic updates
+    │   └── ToastContext.tsx     # Global toast notification queue
     │
     ├── hooks/
-    │   ├── useFetch.ts         # Generic fetch hook with loading/error states
-    │   ├── useProducts.ts      # Products data hook
-    │   └── useBlog.ts          # Blog data hook
+    │   ├── useFetch.ts          # Generic fetch hook with loading/error states
+    │   ├── useProducts.ts       # Products data hook
+    │   └── useBlog.ts           # Blog data hook
     │
     ├── lib/
-    │   ├── currency.ts         # IP geolocation → currency detection → live rate conversion
-    │   ├── constants.ts        # App-wide constants
-    │   ├── safeUrl.ts          # URL sanitisation utility
-    │   └── utils.ts            # General utility functions
+    │   ├── currency.ts          # IP geolocation → currency detection → live rate conversion
+    │   ├── constants.ts         # App-wide constants
+    │   ├── safeUrl.ts           # URL sanitisation utility
+    │   └── utils.ts             # General utility functions
+    │
+    ├── services/
+    │   └── auth.js              # Firebase auth service layer — all Firebase SDK calls
+    │                            # (loginWithGooglePopup, signupWithEmailPassword,
+    │                            #  exchangeFirebaseSession, requestPasswordReset, etc.)
     │
     └── server/
-        ├── db.ts               # Neon client + initDb() (schema + idempotent migrations)
-        ├── seed.ts             # Sample data seeder for development
+        ├── db.ts                # Neon client + initDb() (schema + idempotent migrations)
+        ├── seed.ts              # Sample data seeder for development
         ├── middleware/
-        │   ├── auth.ts         # requireAuth / optionalAuth middleware
-        │   └── admin.ts        # checkAdmin middleware + adminLimit rate limiter
+        │   ├── auth.ts          # requireAuth / optionalAuth middleware
+        │   └── admin.ts         # checkAdmin middleware + adminLimit rate limiter (300/15 min)
         ├── routes/
-        │   ├── auth.ts         # /api/auth — signup, login, logout, admin auth, /me
-        │   ├── products.ts     # /api/products — CRUD, affiliate click tracking
-        │   ├── blog.ts         # /api/blog — posts, categories, CRUD
-        │   ├── leads.ts        # /api/leads — capture, double opt-in confirm, admin list
-        │   ├── wishlist.ts     # /api/wishlist — products + blog posts wishlist
-        │   ├── analytics.ts    # /api/analytics — summary, top products
-        │   ├── contact.ts      # /api/contact — contact form submission
-        │   ├── currency.ts     # /api/currency/rates — cached exchange rates
-        │   ├── geo.ts          # /api/geo/detect — IP-based country/currency detection
-        │   ├── home_shop.ts    # /api/home-shop — shop categories, mood/find-here config
-        │   └── upload.ts       # /api/upload — Cloudinary image upload
+        │   ├── auth.ts          # /api/auth — local auth, Firebase exchange, admin auth
+        │   ├── products.ts      # /api/products — CRUD, affiliate click tracking
+        │   ├── blog.ts          # /api/blog — posts, categories, CRUD
+        │   ├── leads.ts         # /api/leads — capture, double opt-in, admin list
+        │   ├── wishlist.ts      # /api/wishlist — products + blog posts wishlist
+        │   ├── analytics.ts     # /api/analytics — summary, top products
+        │   ├── contact.ts       # /api/contact — contact form submission
+        │   ├── currency.ts      # /api/currency/rates — cached exchange rates
+        │   ├── geo.ts           # /api/geo/detect — IP-based country/currency detection
+        │   ├── home_shop.ts     # /api/home-shop — shop categories, mood/find-here config
+        │   └── upload.ts        # /api/upload — Cloudinary image upload with signature validation
         └── utils/
-            └── formatters.ts   # DB row → TypeScript type transformers
+            ├── formatters.ts    # DB row → TypeScript type transformers
+            └── http.ts          # sendInternalError helper, paginationQuerySchema (Zod)
 ```
+
+---
+
+## Authentication System
+
+The platform uses a **dual-layer authentication architecture**: Firebase handles all client-side identity (OAuth, email/password, session persistence, password reset) while the Express server issues its own HttpOnly JWT cookie for server-side session control.
+
+### Authentication flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. Client authenticates via Firebase SDK                        │
+│     (Google popup, email/password, or password reset email)      │
+│                                                                  │
+│  2. Firebase returns an ID token (short-lived JWT)               │
+│                                                                  │
+│  3. Client calls POST /api/auth/firebase/exchange { idToken }    │
+│                                                                  │
+│  4. Server verifies ID token with Firebase Identity Toolkit API  │
+│     — extracts email, displayName, photoUrl, providerIds         │
+│                                                                  │
+│  5. Server upserts the user in Postgres:                         │
+│     - New user: INSERT with firebaseUser.localId as primary key  │
+│     - Existing user: UPDATE name + provider                      │
+│                                                                  │
+│  6. Server issues ae_token (HttpOnly, 7d) and returns user data  │
+│                                                                  │
+│  7. All subsequent API calls use the ae_token cookie             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Auth routes
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/auth/firebase/exchange` | Verify Firebase ID token → issue server session cookie. Rate limited (10/15 min). |
+| POST | `/api/auth/logout` | Clear `ae_token` cookie. Also calls `signOut(auth)` on the client. |
+| GET | `/api/auth/me` | Verify session cookie → return current user from Postgres. Skipped on `/admin` routes. |
+| POST | `/api/auth/admin/login` | Verify bcrypt admin password → issue `ae_admin_token` (HttpOnly, 8h, SameSite=Strict). Rate limited (5/15 min). |
+| POST | `/api/auth/admin/logout` | Clear `ae_admin_token` cookie. |
+| GET | `/api/auth/admin/me` | Verify admin token → return `{ role: 'admin' }`. |
+
+> **Note:** The legacy `/api/auth/signup` and `/api/auth/login` routes still exist for backward compatibility but the primary auth path in the current UI goes through Firebase. The `/api/auth/google` stub returns 501 and is not used.
+
+### Client-side Firebase services (`src/services/auth.js`)
+
+| Function | Description |
+|---|---|
+| `loginWithGooglePopup()` | Opens Google Sign-In popup via `signInWithPopup` |
+| `loginWithEmailPassword(email, password)` | Firebase email/password sign-in |
+| `signupWithEmailPassword(name, email, password)` | Firebase account creation + `updateProfile` for display name |
+| `requestPasswordReset(email)` | `sendPasswordResetEmail` — triggers Firebase password reset flow |
+| `getFirebaseIdToken()` | Gets fresh ID token from current Firebase user for server exchange |
+| `exchangeFirebaseSession(idToken)` | Calls `/api/auth/firebase/exchange` to establish server session |
+| `logoutFirebase()` | `signOut(auth)` — clears Firebase session |
+| `onGoogleAuthStateChange(callback)` | Subscribes to `onAuthStateChanged`; used by `AuthContext` for session hydration |
+
+### Admin password security
+
+Admins now authenticate using a **bcrypt hash** (`ADMIN_PASSWORD_HASH`) rather than a plaintext env var. A legacy plaintext fallback is available via `ALLOW_LEGACY_ADMIN_PASSWORD=true` for migration:
+
+```bash
+# Generate a bcrypt hash for your admin password
+node -e "require('bcrypt').hash('your_admin_password', 12).then(console.log)"
+# Then set ADMIN_PASSWORD_HASH=<output> in .env
+```
+
+The server validates which mode to use at startup and refuses to boot in production if neither credential is set.
+
+### ProtectedRoute component
+
+The `ProtectedRoute` component wraps authenticated-only routes (`/wishlist`, `/profile`). It reads from `AuthContext`, shows a blank surface while `loading === true`, and redirects to `/login` with `state.from` preserved so the user is returned to their intended destination after login.
 
 ---
 
@@ -288,11 +382,11 @@ All tables are created idempotently on server startup via `initDb()`. Column add
 #### `users`
 | Column | Type | Notes |
 |---|---|---|
-| `id` | TEXT PK | UUID v4 |
+| `id` | TEXT PK | Firebase `localId` for Google users; UUID v4 for local signups |
 | `email` | TEXT UNIQUE | |
-| `password` | TEXT | bcrypt, cost 12 |
+| `password` | TEXT | bcrypt, cost 12. Random hash for Firebase-only users. |
 | `name` | TEXT | |
-| `provider` | TEXT | `'local'` \| `'google'` (Google OAuth stub) |
+| `provider` | TEXT | `'local'` \| `'google'` |
 | `is_admin` | BOOLEAN | Default false |
 | `created_at` | TIMESTAMPTZ | |
 
@@ -311,7 +405,7 @@ All tables are created idempotently on server startup via `initDb()`. Column add
 | `is_active` | BOOLEAN | Controls public visibility |
 | `is_trending`, `is_top_rated` | BOOLEAN | Editorial flags |
 | `related_products` | JSONB | Array of product IDs |
-| `section_heading/subheading/description/cta_text` | TEXT | Per-product CTA block customisation |
+| `section_heading/subheading/description/cta_text` | TEXT | Per-product CTA block |
 | `created_at` | TIMESTAMPTZ | |
 
 #### `blog_posts`
@@ -323,12 +417,13 @@ All tables are created idempotently on server startup via `initDb()`. Column add
 | `title`, `excerpt`, `content` | TEXT | Markdown content |
 | `image` | TEXT | Hero image URL |
 | `images` | JSONB | Gallery images |
-| `author`, `author_image` | TEXT | Byline |
+| `author`, `author_image` | TEXT | Byline with optional author avatar |
 | `date`, `read_time` | TEXT | Editorial metadata |
 | `recommended_products` | JSONB | Array of product IDs |
 | `related_posts` | JSONB | Array of post IDs |
 | `is_published` | BOOLEAN | Draft/publish toggle |
-| `section_*`, `related_posts_*` | TEXT | Customisable CTA sections (×2) |
+| `section_*` | TEXT | First CTA section (heading, subheading, description, cta_text) |
+| `related_posts_*` | TEXT | Second CTA section for related posts block |
 
 #### `blog_categories`
 | Column | Type |
@@ -347,10 +442,10 @@ All tables are created idempotently on server startup via `initDb()`. Column add
 | `sub_categories` | JSONB | Array of sub-category strings |
 
 #### `home_mood_categories`
-Drives the "Shop by Mood" grid on the homepage. Links to a shop category.
+Drives the "Shop by Mood" grid on the homepage. Links to a shop category via `linked_shop_category_id`.
 
 #### `home_find_here_categories`
-Drives the "Find It Here" editorial grid on the homepage. Links to a blog category slug.
+Drives the "Find It Here" editorial grid on the homepage. Links to a blog category slug via `linked_blog_category_slug`.
 
 #### `wishlist_items`
 Junction table: `user_id` → `product_id` with unique constraint. Cascade deletes.
@@ -384,7 +479,22 @@ Mirrors `affiliate_clicks` but for Pinterest save events.
 Stores name, email, message from the contact form.
 
 #### `site_config`
-Key-value store for all CMS-editable site copy. Keys include `home_hero_title`, `footer_about`, `about_hero_title`, `free_guide_file_url`, and more. Seeded with defaults on first boot.
+Key-value store for all CMS-editable site copy. Seeded with defaults on first boot:
+
+| Key | Default value |
+|---|---|
+| `home_hero_title` | `The Aesthetic Edit` |
+| `home_hero_subtitle` | `Turn your saved inspiration into a life you actually live.` |
+| `home_hero_description` | Hero body copy |
+| `footer_about` | Footer tagline |
+| `footer_copyright` | `© 2026 THE AESTHETIC EDIT. ALL RIGHTS RESERVED.` |
+| `about_hero_title` | `Hi, I'm Anjali.` |
+| `about_hero_subtitle` | About page subtitle |
+| `about_hero_description` | About page body copy |
+| `about_hero_signature` | `Anjali` |
+| `about_cta_title/subtitle/button` | About page CTA block |
+| `shop_empty_message` | No results copy |
+| `shop_sidebar_title` | `Categories` |
 
 ### Indexes
 
@@ -421,19 +531,20 @@ All API responses follow a consistent envelope:
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/signup` | — | Register user. Rate limited (10/15 min). Validates via Zod. Sets `ae_token` cookie. |
-| POST | `/login` | — | Authenticate user. Rate limited. Sets `ae_token` cookie (7d, HttpOnly). |
-| POST | `/logout` | — | Clears `ae_token` cookie. |
-| GET | `/me` | User cookie | Returns current user profile. |
-| POST | `/admin/login` | — | Authenticate admin via `ADMIN_PASSWORD`. Sets `ae_admin_token` cookie (8h, HttpOnly, SameSite=Strict). |
-| POST | `/admin/logout` | — | Clears `ae_admin_token` cookie. |
-| GET | `/admin/me` | Admin cookie | Verifies admin session. |
+| POST | `/firebase/exchange` | — | Verify Firebase ID token → issue `ae_token` cookie (7d, HttpOnly). Rate limited (10/15 min). |
+| POST | `/logout` | — | Clear `ae_token` cookie. |
+| GET | `/me` | User cookie | Returns current user profile from Postgres. |
+| POST | `/signup` | — | Legacy local signup. Rate limited (10/15 min). |
+| POST | `/login` | — | Legacy local login. Rate limited (10/15 min). |
+| POST | `/admin/login` | — | Verify bcrypt admin password. Sets `ae_admin_token` (8h, HttpOnly, SameSite=Strict). Rate limited (5/15 min). |
+| POST | `/admin/logout` | — | Clear `ae_admin_token` cookie. |
+| GET | `/admin/me` | Admin cookie | Verifies admin session. Returns `{ role: 'admin' }`. |
 
 ### Products — `/api/products`
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/` | — | List all active products. Supports `?category`, `?subCategory`, `?vibe` filters. Paginated. |
+| GET | `/` | — | List all active products. Supports `?category`, `?subCategory`, `?vibe` filters. Paginated (max 50/page via `paginationQuerySchema`). |
 | GET | `/:id` | — | Single product detail. |
 | POST | `/affiliate-click/:id` | Optional | Record affiliate click. Rate limited (20/min). Captures UA + referrer. |
 | POST | `/pinterest-save/:id` | Optional | Record Pinterest save event. |
@@ -441,7 +552,7 @@ All API responses follow a consistent envelope:
 | POST | `/admin/create` | Admin | Create product. Full Zod validation. |
 | PUT | `/admin/:id` | Admin | Full product update. |
 | PATCH | `/admin/:id` | Admin | Partial update (affiliateUrl, isActive, isTrending, isTopRated, relatedProducts). |
-| DELETE | `/admin/:id` | Admin | Soft delete / hard delete product. |
+| DELETE | `/admin/:id` | Admin | Delete product. |
 
 ### Blog — `/api/blog`
 
@@ -465,7 +576,7 @@ All API responses follow a consistent envelope:
 |---|---|---|---|
 | POST | `/` | — | Capture lead (name + email). Rate limited (5/hour). Double opt-in token generated. |
 | GET | `/confirm/:token` | — | Confirm subscription via email link. |
-| GET | `/guide-download` | — | Redirect to configured guide PDF URL. |
+| GET | `/guide-download` | — | Redirect to configured guide PDF URL (from `site_config`). |
 | GET | `/admin/all` | Admin | All leads with confirmation status. |
 | DELETE | `/admin/:id` | Admin | Delete lead. |
 
@@ -491,10 +602,10 @@ All API responses follow a consistent envelope:
 | Route | Description |
 |---|---|
 | `GET /api/currency/rates` | Live exchange rates (USD base, 6h in-memory cache). Source: open.er-api.com |
-| `GET /api/geo/detect` | IP geolocation (primary: ipapi.co, fallback: ip-api.com). Returns country, city, currency. |
-| `POST /api/upload` | Admin-only. Multipart image upload → Cloudinary. 5MB limit. JPEG/PNG/WebP/GIF only. Rate limited (50/15 min). |
+| `GET /api/geo/detect` | IP geolocation (primary: ipapi.co, fallback: ip-api.com). Returns country, city, currency. Handles `X-Forwarded-For`, `CF-Connecting-IP`, `X-Real-IP`. |
+| `POST /api/upload` | Admin-only. Multipart image upload → Cloudinary. 5MB limit. JPEG/PNG/WebP/GIF only. Magic-byte signature validated. Rate limited (20/15 min). |
 | `POST /api/contact` | Public contact form. Stored to DB + (optionally) emailed via Nodemailer. |
-| `GET /api/home-shop/config` | Public: shop categories, mood grid, find-here grid, site config. |
+| `GET /api/home-shop/config` | Public: shop categories, mood grid, find-here grid, site config (including `favicon_url`). |
 | Various `/api/home-shop/admin/*` | Admin CRUD for shop categories, mood categories, find-here categories, site config. |
 
 ### SEO Endpoints
@@ -502,68 +613,98 @@ All API responses follow a consistent envelope:
 | Endpoint | Description |
 |---|---|
 | `GET /robots.txt` | Dynamically generated. Disallows `/admin` and `/api/`. References sitemap. |
-| `GET /sitemap.xml` | Dynamically generated XML sitemap including all active products and published blog posts. |
+| `GET /sitemap.xml` | Dynamically generated XML sitemap including all active products and published blog posts with correct category-slug URL structure. |
 
 ---
 
-## Authentication & Security
+## Security
 
-### User Authentication
+### Authentication
 
-- JWT signed with `JWT_SECRET` (minimum 32 characters, validated at startup).
-- Issued as `ae_token` HttpOnly cookie; `Secure` in production; `SameSite=lax`.
-- 7-day expiry. No refresh token — re-login required on expiry.
-- Passwords hashed with bcrypt, cost factor 12.
-
-### Admin Authentication
-
-- Separate cookie (`ae_admin_token`); `SameSite=strict`; 8-hour expiry.
-- Password stored as plain env var (`ADMIN_PASSWORD`); comparison is constant-time via trim equality (not bcrypt — single admin use case).
-- All admin routes protected by `checkAdmin` middleware which verifies JWT `role === 'admin'`.
+- **User session**: Firebase ID token verified server-side via `identitytoolkit.googleapis.com/v1/accounts:lookup`. Server issues `ae_token` (HttpOnly, `SameSite=lax`, 7 days, `Secure` in production).
+- **Admin session**: bcrypt-hashed password (cost 12). Issues `ae_admin_token` (HttpOnly, `SameSite=strict`, 8 hours, `Secure` in production).
+- **Passwords**: bcrypt at cost 12. Firebase users receive a random bcrypt hash server-side (they never set a local password).
 
 ### Security Headers (Helmet v8)
 
-In production, a strict CSP is applied:
+In production, a strict CSP is applied, explicitly allowing Firebase and Google Sign-In domains:
 
 ```
-default-src 'self'
-script-src  'self' 'unsafe-inline'
-style-src   'self' 'unsafe-inline' https://fonts.googleapis.com
-img-src     'self' data: blob: https://res.cloudinary.com https://*.amazonaws.com ...
-connect-src 'self' https://ipapi.co https://open.er-api.com
-font-src    'self' https://fonts.gstatic.com
-object-src  'none'
+default-src      'self'
+script-src       'self' 'unsafe-inline'
+                 https://apis.google.com
+                 https://apis.googleapis.com
+                 https://accounts.google.com
+                 https://www.gstatic.com
+style-src        'self' 'unsafe-inline' https://fonts.googleapis.com
+img-src          'self' data: blob:
+                 https://res.cloudinary.com
+                 https://lh3.googleusercontent.com  (Google profile photos)
+                 https://images.unsplash.com
+                 https://i.pravatar.cc
+connect-src      'self'
+                 https://ipapi.co
+                 https://open.er-api.com
+                 https://identitytoolkit.googleapis.com
+                 https://securetoken.googleapis.com
+                 https://firebaseinstallations.googleapis.com
+                 https://firebase.googleapis.com
+                 https://www.googleapis.com
+frame-src        'self'
+                 https://accounts.google.com
+                 https://*.firebaseapp.com
+                 https://*.web.app
+font-src         'self' https://fonts.gstatic.com
+object-src       'none'
+crossOriginOpenerPolicy: same-origin-allow-popups  (required for Google popup auth)
 upgrade-insecure-requests (production only)
 ```
 
 ### CORS
 
-Origin allowlist is read from `APP_URL` (comma-separated). Origins are normalised (trailing slashes stripped, URL parsed) before comparison. Credentials (`cookies`) are allowed from listed origins only.
+Origin allowlist read from `APP_URL` (comma-separated). Origins are normalised (trailing slashes stripped, URL parsed) before comparison. CORS is applied only to `/api` routes. Static assets and SPA documents do not receive CORS headers.
+
+`ALLOW_REQUESTS_WITHOUT_ORIGIN=true` permits same-origin navigations and server-side scripts (e.g. smoke tests) when needed. Keep `false` in production.
 
 ### Rate Limiting
 
 | Route group | Window | Max requests |
 |---|---|---|
 | Login / Signup | 15 min | 10 |
+| Admin login | 15 min | 5 |
 | Lead capture | 60 min | 5 |
 | Affiliate click | 1 min | 20 |
-| Image upload | 15 min | 50 |
+| Image upload | 15 min | 20 |
 | Geo detection | 15 min | 100 |
 | Currency rates | 1 min | 30 |
-| All admin routes | 15 min | 1,000 |
+| All admin routes | 15 min | 300 |
 
-`express-rate-limit` uses standard headers (`RateLimit-*`). The server sets `trust proxy: 1` for correct client IP resolution behind Render/Nginx/Cloudflare.
+`express-rate-limit` uses standard `RateLimit-*` headers. The server sets `trust proxy: 1` for correct client IP resolution behind Render/Nginx/Cloudflare.
+
+### File Upload Security
+
+The `/api/upload` endpoint performs **two-layer validation**:
+
+1. **MIME type check** — multer `fileFilter` rejects non-image MIME types at parse time.
+2. **Magic-byte signature check** — the buffer is inspected for known file signatures before upload to Cloudinary:
+   - JPEG: `FF D8`
+   - PNG: `89 50 4E 47`
+   - WebP: `52 49 46 46 … 57 45 42 50`
+   - GIF: `47 49 46`
+
+Files failing either check are rejected with HTTP 400. This prevents polyglot file attacks where a malicious file carries a valid MIME type but a different actual format.
 
 ---
 
 ## Admin Panel
 
-The admin panel is a full single-page application within the SPA, mounted at `/admin`. It is completely separated from the public-facing UI — the `Navbar` and `Footer` are hidden when on admin routes.
+The admin panel is a full single-page application within the SPA, mounted at `/admin`. The `Navbar` and `Footer` are hidden when on admin routes (detected via `location.pathname.startsWith('/admin')`). Auth state checks are skipped on admin routes to avoid interfering with the separate admin cookie flow.
 
 ### Admin login flow
 
 ```
 POST /api/auth/admin/login { password }
+  → bcrypt.compare(password, ADMIN_PASSWORD_HASH)
   → Sets ae_admin_token cookie (HttpOnly, SameSite=strict, 8h)
   → All subsequent admin API calls carry this cookie automatically
 ```
@@ -572,17 +713,17 @@ POST /api/auth/admin/login { password }
 
 **AdminAnalytics** — Dashboard cards showing total leads, affiliate clicks, and Pinterest saves. Sortable table of all products with their individual click and save counts. "Top by Clicks" and "Top by Pinterest Saves" ranked lists.
 
-**AdminProducts** — Full product management: create, edit, delete. Multi-image uploader (Cloudinary). Vibe tag management. Related product picker. Per-product CTA block with custom heading, subheading, description, and CTA button text.
+**AdminProducts** — Full product management: create, edit, delete. Multi-image uploader (Cloudinary + magic-byte validation). Vibe tag management. Related product picker. Per-product CTA block with custom heading, subheading, description, and CTA button text.
 
-**AdminBlogs** — Blog post editor with full field set including markdown `content`, hero image, gallery images, recommended products (picker), related posts (picker), and two customisable CTA sections.
+**AdminBlogs** — Blog post editor with full field set including markdown `content`, hero image, gallery images, recommended products picker, related posts picker, and two independently configurable CTA sections (primary + related-posts block).
 
 **AdminBlogCategories** — CRUD for blog category slugs, images, descriptions.
 
-**AdminShopCategories** — Hierarchical shop category management with sub-category arrays.
+**AdminShopCategories** — Hierarchical shop category management with sub-category string arrays.
 
 **AdminHomeConfig** — Edit the homepage mood category grid and "Find It Here" editorial grid entries. Links mood categories to shop categories and editorial categories to blog category slugs.
 
-**AdminSiteConfig** — Key-value editor for all site copy: hero text, about page content, footer text, free guide PDF URL, favicon URL, and more. Changes take effect immediately (no build required).
+**AdminSiteConfig** — Key-value editor for all site copy: hero text, about page content, footer text, free guide PDF URL (replaces file upload — paste a public HTTPS URL), favicon URL, and more. Changes take effect immediately without a rebuild.
 
 **AdminLeads** — Read-only table of all email leads with confirmation status, source, and timestamp.
 
@@ -608,13 +749,13 @@ The platform supports 10 currencies with automatic detection:
 **Detection flow:**
 
 1. Frontend calls `GET /api/geo/detect`
-2. Server resolves client IP (handles `X-Forwarded-For`, `CF-Connecting-IP`, `X-Real-IP` headers; skips private ranges)
+2. Server resolves client IP (handles `X-Forwarded-For`, `CF-Connecting-IP`, `X-Real-IP`; skips private ranges)
 3. Primary lookup: `ipapi.co` → returns `country_code` + `currency`
 4. Fallback: `ip-api.com` (no currency on free tier)
 5. Currency code is mapped to a `SupportedCurrency` type
 6. Frontend calls `GET /api/currency/rates` (USD-base, 6h server-side in-memory cache)
 7. Product prices (stored in INR) are converted client-side using `Intl.NumberFormat`
-8. Fallback rates are hardcoded for offline/error resilience
+8. Hardcoded fallback rates handle complete API outages gracefully
 
 ---
 
@@ -627,13 +768,18 @@ All images are managed via **Cloudinary**. The admin panel provides both single 
 ```
 Admin → multipart/form-data → POST /api/upload
   → multer (in-memory storage, 5MB limit, MIME whitelist)
-  → cloudinary.uploader.upload_stream({ folder: 'aesthetic-edit' })
+  → isAllowedImageSignature() — magic-byte check
+  → cloudinary.uploader.upload_stream({ folder: 'aesthetic-edit', timeout: 120s })
   → returns { url: secure_url, public_id }
 ```
 
-### Configuration
+### Cloudinary configuration
 
-Cloudinary is configured via either `CLOUDINARY_URL` (single env var) or the three-part `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` pattern. The `getCloudinary()` factory function checks both patterns with graceful error messaging.
+Cloudinary accepts either a single `CLOUDINARY_URL` env var or the three-part pattern. The `getCloudinary()` factory checks both with graceful error messaging. The uploader also accepts env var aliases (`CLOUD_NAME`, `CLOUDINARY_KEY`, `CLOUDINARY_SECRET`, etc.) for compatibility.
+
+### Guide file uploads
+
+The `/api/upload/guide` endpoint has been **disabled** (returns 410 Gone). To update the free guide, set a public HTTPS PDF URL in **Admin > Site Config > Guide File URL**. This avoids Cloudinary PDF size limits and simplifies the flow.
 
 ### Supported MIME types
 
@@ -645,18 +791,17 @@ Maximum file size: **5 MB** per image.
 
 ## SEO Infrastructure
 
-The platform has first-class SEO support baked into the server and the React layer.
-
 ### Dynamic sitemap
 
 `GET /sitemap.xml` queries Postgres at request time and generates a valid XML sitemap with:
 - Static routes (`/`, `/shop`, `/blog`, `/about`, `/free-guide`) at weekly change frequency
-- All active product pages at monthly frequency
-- All published blog post pages at monthly frequency
+- All active product pages at `/shop/product/:id` at monthly frequency
+- All published blog post pages at `/blog/:category_slug/:slug` at monthly frequency
 
 ### robots.txt
 
-`GET /robots.txt` is server-generated and includes:
+`GET /robots.txt` is server-generated:
+- `Allow: /`
 - `Disallow: /admin`
 - `Disallow: /api/`
 - `Sitemap:` pointing to the dynamic sitemap
@@ -669,26 +814,27 @@ The `SEOMeta` component sets dynamic `<title>`, `<meta name="description">`, Ope
 
 ## Smoke Testing
 
-Two ESM smoke-test scripts verify the full application is working correctly against a live server. They are designed to run in CI or as a pre-deploy sanity check.
+Two ESM smoke-test scripts verify the full application against a live server. Run them in CI or as a pre-deploy sanity check.
 
 ### `scripts/smoke-full.mjs`
 
-Full end-to-end test suite covering:
+Full end-to-end coverage:
 - Health check (HTTP 200 on `/`)
-- User signup, login, `GET /api/auth/me`, logout
-- Admin login, `GET /api/auth/admin/me`
+- Admin login → verify `ae_admin_token` cookie
+- User signup + login (unique email per run via `Date.now()`)
+- `GET /api/auth/me`
 - Product creation (admin), public product list, product detail
 - Affiliate click recording
 - Blog category and post creation (admin), public blog listing
 - Lead capture
 - Wishlist add/remove (products + journals)
 - Currency rates and geo detection
-- Image upload (1×1 PNG fixture)
+- Image upload (1×1 PNG fixture, base64-decoded in-process)
 - Site config read/write
 
 ### `scripts/smoke-admin.mjs`
 
-Admin-scoped tests for CMS entities:
+Admin-scoped CMS tests:
 - Shop category and sub-category management
 - Home mood category and find-here category CRUD
 - Site config key-value updates
@@ -720,8 +866,9 @@ node scripts/smoke-admin.mjs
 - **Node.js** ≥ 18.0
 - **npm** ≥ 9.0
 - A **Neon** account (free tier works) — [neon.tech](https://neon.tech)
+- A **Firebase** project (Spark/free plan works) — [console.firebase.google.com](https://console.firebase.google.com)
 - A **Cloudinary** account (free tier works) — [cloudinary.com](https://cloudinary.com)
-- (Optional) SMTP credentials for email delivery (lead confirmation, contact form)
+- (Optional) SMTP credentials for email delivery
 
 ### 1. Clone and install
 
@@ -731,25 +878,38 @@ cd the-aesthetic-edit
 npm install
 ```
 
-### 2. Configure environment
+### 2. Configure Firebase
+
+1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+2. Enable **Authentication** → **Sign-in method** → enable **Google** and **Email/Password**
+3. Add `localhost` (and your production domain) to **Authorized domains**
+4. Go to **Project Settings** → **Your apps** → add a **Web app** → copy the config object
+
+### 3. Configure environment
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your credentials (see [Environment Variables](#environment-variables)).
+Fill in all required variables (see [Environment Variables](#environment-variables)).
 
-### 3. Start development server
+Generate a bcrypt hash for your admin password:
+
+```bash
+node -e "require('bcrypt').hash('your_password_here', 12).then(console.log)"
+```
+
+Set the output as `ADMIN_PASSWORD_HASH` in your `.env`.
+
+### 4. Start development server
 
 ```bash
 npm run dev
 ```
 
-The server starts on `http://localhost:3000`. Vite runs in middleware mode — full HMR is active, no separate frontend process required.
+Server starts on `http://localhost:3000`. Vite runs in middleware mode — full HMR is active, no separate frontend process required. The database schema is created automatically on first boot via `initDb()`.
 
-The database schema is created automatically on first boot via `initDb()`.
-
-### 4. Seed sample data (optional)
+### 5. Seed sample data (optional)
 
 ```bash
 npm run seed
@@ -757,9 +917,9 @@ npm run seed
 
 Populates the database with sample products, blog categories, blog posts, and site configuration.
 
-### 5. Access the admin panel
+### 6. Access the admin panel
 
-Navigate to `http://localhost:3000/admin` and enter the `ADMIN_PASSWORD` from your `.env`.
+Navigate to `http://localhost:3000/admin` and enter your admin password. In development, you can use the legacy `ADMIN_PASSWORD` plaintext env var — see `.env.example`.
 
 ---
 
@@ -769,12 +929,23 @@ Navigate to `http://localhost:3000/admin` and enter the `ADMIN_PASSWORD` from yo
 |---|---|---|
 | `DATABASE_URL` | **Yes** | Neon Postgres connection string. Format: `postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require` |
 | `JWT_SECRET` | **Yes** | Minimum 32 characters. Used for both user and admin JWT signing. |
-| `ADMIN_PASSWORD` | **Yes** | Admin panel login password. Change before deploying. |
-| `APP_URL` | **Yes** | Comma-separated list of allowed CORS origins. Include all frontend URLs. e.g. `https://theaestheticedit.com,http://localhost:3000` |
+| `ADMIN_PASSWORD_HASH` | **Yes (prod)** | bcrypt hash of admin password (cost 12). Generate with the node one-liner above. |
+| `ADMIN_PASSWORD` | Dev fallback | Legacy plaintext admin password. Not used in production unless `ALLOW_LEGACY_ADMIN_PASSWORD=true`. |
+| `ALLOW_LEGACY_ADMIN_PASSWORD` | No | `true` only for temporary migration. Keep `false` in production. Default: `false`. |
+| `APP_URL` | **Yes** | Comma-separated CORS origin allowlist. e.g. `https://theaestheticedit.com,http://localhost:3000` |
+| `ALLOW_REQUESTS_WITHOUT_ORIGIN` | No | Allow requests with no `Origin` header. Keep `false` in production. Default: `false`. |
+| `VITE_FIREBASE_API_KEY` | **Yes** | Firebase web app API key |
+| `VITE_FIREBASE_AUTH_DOMAIN` | **Yes** | Firebase auth domain (e.g. `your-project.firebaseapp.com`) |
+| `VITE_FIREBASE_PROJECT_ID` | **Yes** | Firebase project ID |
+| `VITE_FIREBASE_STORAGE_BUCKET` | **Yes** | Firebase storage bucket |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | **Yes** | Firebase messaging sender ID |
+| `VITE_FIREBASE_APP_ID` | **Yes** | Firebase app ID |
+| `VITE_FIREBASE_MEASUREMENT_ID` | No | Firebase Analytics measurement ID |
+| `FIREBASE_WEB_API_KEY` | **Yes (server)** | Used server-side to verify Firebase ID tokens. Usually the same as `VITE_FIREBASE_API_KEY`. |
 | `CLOUDINARY_CLOUD_NAME` | For uploads | Cloudinary cloud name |
 | `CLOUDINARY_API_KEY` | For uploads | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | For uploads | Cloudinary API secret |
-| `CLOUDINARY_URL` | For uploads | Alternative: single `cloudinary://` URL (overrides the above three) |
+| `CLOUDINARY_URL` | For uploads | Alternative: single `cloudinary://` URL (overrides the three above) |
 | `SMTP_HOST` | For email | e.g. `smtp.gmail.com` |
 | `SMTP_PORT` | For email | Default: `587` |
 | `SMTP_USER` | For email | SMTP username |
@@ -783,7 +954,7 @@ Navigate to `http://localhost:3000/admin` and enter the `ADMIN_PASSWORD` from yo
 | `NODE_ENV` | No | `development` (default) or `production` |
 | `PORT` | No | HTTP port. Default: `3000` |
 
-**Startup validation:** The server will refuse to start if `DATABASE_URL`, `JWT_SECRET`, or `ADMIN_PASSWORD` are missing, or if `JWT_SECRET` is shorter than 32 characters.
+**Startup validation:** The server refuses to start if `DATABASE_URL` or `JWT_SECRET` are missing, if `JWT_SECRET` is shorter than 32 characters, or if no admin credential is configured. In production, a missing `ADMIN_PASSWORD_HASH` will also cause startup failure unless `ALLOW_LEGACY_ADMIN_PASSWORD=true`.
 
 ---
 
@@ -796,9 +967,9 @@ Navigate to `http://localhost:3000/admin` and enter the `ADMIN_PASSWORD` from yo
 | Build frontend | `npm run build` | Vite production build → `dist/` |
 | Preview build | `npm run preview` | Serve the production build locally |
 | Seed database | `npm run seed` | Populate DB with sample data |
-| Type check | `npm run type-check` | `tsc --noEmit` (no emit, check only) |
+| Type check | `npm run type-check` | `tsc --noEmit` |
 | Lint | `npm run lint` | Alias for type-check |
-| Clean build | `npm run clean` | `rm -rf dist` |
+| Clean build | `npm run clean` | Cross-platform `rm -rf dist` (uses `node -e` for Windows compat) |
 
 ---
 
@@ -811,23 +982,54 @@ The application is designed for deployment on **Render** (or any Node.js-capable
 1. Create a new **Web Service** on Render
 2. Set **Build command**: `npm install && npm run build`
 3. Set **Start command**: `npm run start`
-4. Add all environment variables from `.env.example`
+4. Add all environment variables (see table above)
 5. Set `NODE_ENV=production`
 
 The server sets `app.set('trust proxy', 1)` — required for Render's proxy to correctly pass client IPs to rate limiters and geo detection.
 
 ### Production behaviour
 
-- Vite dev middleware is **not** loaded in production
+- Vite dev middleware is not loaded
 - Express serves `dist/` as static files
-- All unmatched non-API routes return `dist/index.html` (SPA fallback)
-- `morgan` HTTP logging is disabled in production
-- Helmet CSP is fully activated
+- All non-API unmatched routes return `dist/index.html` (SPA fallback)
+- `morgan` HTTP logging is disabled
+- Helmet CSP is fully activated (including Firebase/Google domains)
 - Cookies are set with `Secure: true`
+- Admin password validated against bcrypt hash only (unless legacy toggle is set)
 
 ### Database
 
-No migration runner is required. On each server start, `initDb()` runs all `CREATE TABLE IF NOT EXISTS` and `ALTER TABLE … ADD COLUMN IF NOT EXISTS` statements idempotently. This means re-deploying never risks data loss.
+No migration runner is needed. `initDb()` runs all `CREATE TABLE IF NOT EXISTS` and `ALTER TABLE … ADD COLUMN IF NOT EXISTS` statements on every server start. Re-deploying never risks data loss.
+
+---
+
+## Deployment Lockdown Checklist
+
+Use this before going live. Full version in `DEPLOYMENT_LOCKDOWN.md`.
+
+**Environment**
+- [ ] `NODE_ENV=production`
+- [ ] `APP_URL` set to real production domain(s)
+- [ ] `ALLOW_REQUESTS_WITHOUT_ORIGIN=false`
+- [ ] `ALLOW_LEGACY_ADMIN_PASSWORD=false`
+- [ ] `ADMIN_PASSWORD_HASH` set, `ADMIN_PASSWORD` left empty
+- [ ] `JWT_SECRET` is 32+ random characters
+- [ ] All `VITE_FIREBASE_*` keys set
+- [ ] `FIREBASE_WEB_API_KEY` set (server-side token verification)
+- [ ] Cloudinary credentials set
+
+**Firebase**
+- [ ] Google Sign-In provider enabled
+- [ ] Production domain added to Firebase Authorized domains
+- [ ] `localhost` present only for development
+
+**Post-deploy smoke checks**
+- [ ] Local email/password login works
+- [ ] Google Sign-In popup works on production domain
+- [ ] Admin login works with hashed password
+- [ ] Upload endpoint rejects invalid file signatures
+- [ ] Wishlist routes work for authenticated users
+- [ ] `/sitemap.xml` returns valid XML
 
 ---
 
@@ -845,23 +1047,31 @@ manualChunks(id) {
 }
 ```
 
-All 13 page routes are individually lazy-loaded via `React.lazy()`.
+All 14 page routes are individually lazy-loaded via `React.lazy()`.
 
 ### Idle-time prefetching
 
-High-traffic routes (Shop, Blog, FreeGuide, ProductDetail, BlogPost) are prefetched via `requestIdleCallback` (with `setTimeout` fallback) on initial page load — invisible to the user, but eliminates route-change loading delays.
+High-traffic routes (Shop, Blog, FreeGuide, ProductDetail, BlogPost) are prefetched via `requestIdleCallback` (with `setTimeout(fn, 700)` fallback) on initial page load — invisible to the user but eliminates route-change loading delays.
 
 ### Favicon from CMS
 
-The favicon is dynamically injected from the `favicon_url` site config key on app boot, avoiding a hard-coded HTML dependency.
+On app boot, `App.tsx` fetches `/api/home-shop/config` and dynamically injects the `favicon_url` site config value into `<link rel="icon">` — no hard-coded HTML dependency required.
 
 ### Currency cache
 
-Exchange rates are cached in-process for 6 hours on both server (per-process) and client (per-session). Fallback rates are hardcoded to handle complete API outages gracefully.
+Exchange rates are cached in-process for 6 hours on both server and client. Fallback rates are hardcoded for complete API outage resilience.
 
 ### Skeleton loading
 
 All data-fetching pages render placeholder skeleton components while data loads, preventing layout shift and improving perceived performance.
+
+### IPv4-first DNS
+
+`dns.setDefaultResultOrder('ipv4first')` is called at `db.ts` load time to prevent `ENOTFOUND` errors on Windows and certain cloud environments where IPv6 DNS resolves but routing to Neon endpoints fails silently.
+
+### Body size
+
+Admin payloads (blog markdown, product image arrays) can exceed the default Express 10kb limit. The server raises this to **2MB** (`express.json({ limit: '2mb' })`).
 
 ---
 
@@ -882,12 +1092,13 @@ All data-fetching pages render placeholder skeleton components while data loads,
 - **Zod schemas** — All new API routes that accept a request body must validate with a Zod schema.
 - **Response envelope** — All API responses must follow `{ success, data, error?, meta? }`.
 - **Rate limiting** — All new public endpoints must have a rate limiter applied.
-- **Migration pattern** — New database columns must use `ALTER TABLE … ADD COLUMN IF NOT EXISTS` inside a `try/catch` block in `initDb()`.
-- **Error messages in production** — Do not leak internal error messages to clients in production. Follow the existing `process.env.NODE_ENV` pattern.
+- **Migration pattern** — New database columns must use `ALTER TABLE … ADD COLUMN IF NOT EXISTS` inside `try/catch` in `initDb()`.
+- **Auth pattern** — New authenticated routes use `requireAuth` middleware; new admin routes use `checkAdmin` + `adminLimit`.
+- **File uploads** — Any new upload endpoint must call `isAllowedImageSignature()` before forwarding to Cloudinary.
+- **Error messages in production** — Do not leak internal error messages to clients. Follow the existing `process.env.NODE_ENV` pattern or use `sendInternalError()` from `src/server/utils/http.ts`.
 
 ---
 
 ## License
 
 Private. All rights reserved. © 2026 The Aesthetic Edit.
-
